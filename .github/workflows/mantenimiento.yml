@@ -18,7 +18,6 @@ jobs:
     uses: ./.github/workflows/construir.yml
     with:
       dibu_ref: main
-    secrets: inherit
 
   auditoria:
     name: cargo audit (wasm/Cargo.lock)

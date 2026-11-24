@@ -2,7 +2,7 @@
 #  - en cada push a main,
 #  - cuando dibu publica un release (repository_dispatch "dibu-release", lo envía release.yml de dibu),
 #  - o a mano, eligiendo contra qué rama/tag de dibu compilar.
-# Requiere activar Pages con origen "GitHub Actions" (Settings → Pages).
+# Sitio: https://ingcom-unrn.github.io/dibu-web/ (Pages con origen "GitHub Actions").
 name: Publicar editor
 
 on:
@@ -28,7 +28,6 @@ jobs:
     uses: ./.github/workflows/construir.yml
     with:
       dibu_ref: ${{ github.event.client_payload.ref || inputs.dibu_ref || 'main' }}
-    secrets: inherit
 
   desplegar:
     name: Desplegar en Pages

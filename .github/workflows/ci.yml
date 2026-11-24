@@ -23,4 +23,3 @@ jobs:
     uses: ./.github/workflows/construir.yml
     with:
       dibu_ref: ${{ inputs.dibu_ref || 'main' }}
-    secrets: inherit

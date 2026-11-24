@@ -1,9 +1,8 @@
 # Workflow reutilizable: compila el motor dibu a WebAssembly, genera dist/index.html,
 # corre todas las pruebas y deja el sitio listo como artefacto `editor`.
 #
-# Necesita el código de dibu: se clona INGCOM-UNRN/dibu junto a este repositorio
-# (la misma disposición ../dibu que en desarrollo). Mientras dibu sea privado hace
-# falta el secreto DIBU_TOKEN: un PAT fine-grained con "Contents: read" sobre dibu.
+# Necesita el código de dibu: se clona INGCOM-UNRN/dibu (público) junto a este
+# repositorio, con la misma disposición ../dibu que en desarrollo.
 name: Construir
 
 on:
@@ -13,9 +12,6 @@ on:
         description: Rama, tag o commit de dibu contra el que se compila
         type: string
         default: main
-    secrets:
-      DIBU_TOKEN:
-        required: false
     outputs:
       dibu_sha:
         description: Commit de dibu usado
@@ -43,7 +39,6 @@ jobs:
           repository: ${{ github.repository_owner }}/dibu
           ref: ${{ inputs.dibu_ref }}
           path: dibu
-          token: ${{ secrets.DIBU_TOKEN || github.token }}
       - id: dibu
         run: echo "sha=$(git -C dibu rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 

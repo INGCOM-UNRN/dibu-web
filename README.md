@@ -90,14 +90,12 @@ la prueba de navegador.
 - `mantenimiento.yml`: los lunes compila contra `dibu` `main`, para detectar enseguida
   cambios del motor que rompan el editor, y audita `wasm/Cargo.lock` con `cargo audit`.
 
-Configuración necesaria una sola vez:
+El editor publicado está en <https://ingcom-unrn.github.io/dibu-web/>.
 
-1. **Settings → Pages → Source: GitHub Actions.**
-2. Mientras `dibu` sea privado, el secreto **`DIBU_TOKEN`** en este repositorio: un token
-   fine-grained con permiso *Contents: read* sobre `INGCOM-UNRN/dibu`.
-3. Para republicar automáticamente con cada release de `dibu`, el secreto
-   **`DIBU_WEB_DISPATCH_TOKEN`** en el repositorio `dibu`: un token fine-grained con
-   *Contents: read and write* sobre `INGCOM-UNRN/dibu-web`.
+Para que cada release de `dibu` republique el editor automáticamente, hace falta el secreto
+**`DIBU_WEB_DISPATCH_TOKEN`** en el repositorio `dibu`: un token fine-grained con
+*Contents: read and write* sobre `INGCOM-UNRN/dibu-web`. Sin ese secreto, el editor se
+republica igual en cada push a `main` o a mano desde Actions.
 
 ## Nota sobre precisión numérica
 
