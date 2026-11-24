@@ -52,6 +52,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dibu-comp"
+version = "0.1.0"
+dependencies = [
+ "dibu-core",
+ "serde_json",
+]
+
+[[package]]
 name = "dibu-control"
 version = "0.1.0"
 dependencies = [
@@ -81,6 +89,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dibu-math"
+version = "0.1.0"
+dependencies = [
+ "dibu-comp",
+ "dibu-core",
+ "dibu-plot",
+ "serde_json",
+]
+
+[[package]]
 name = "dibu-plot"
 version = "0.1.0"
 dependencies = [
@@ -92,9 +110,11 @@ name = "dibu-wasm"
 version = "0.1.0"
 dependencies = [
  "dibu-chem",
+ "dibu-comp",
  "dibu-control",
  "dibu-core",
  "dibu-cs",
+ "dibu-math",
  "serde_json",
  "serde_yaml",
 ]

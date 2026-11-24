@@ -102,6 +102,12 @@ export function desdeFuente(dirCrates) {
     for (const m of src.matchAll(/registrar\(\s*"([a-z_]+)"\s*,\s*((?:[a-z_][a-z0-9_]*::)*[a-z_][a-z0-9_]*)\s*\)/g)) {
       registros.push([m[1], m[2].split("::").pop()]);
     }
+    // Macro de dibu-comp/dibu-math: registrar_tipos!(reg, "heap" => estructuras::render_heap, …)
+    for (const inv of src.matchAll(/registrar_tipos!\(\s*reg\s*,([^;]*?)\);/g)) {
+      for (const m of inv[1].matchAll(/"([a-z_0-9]+)"\s*=>\s*((?:[a-z_][a-z0-9_]*::)*[a-z_][a-z0-9_]*)/g)) {
+        registros.push([m[1], m[2].split("::").pop()]);
+      }
+    }
     // Registros con closure: reg.registrar("tree", |c, b| envolver_tipo("tree", arbol(c, b)));
     for (const m of src.matchAll(/registrar\(\s*"([a-z_]+)"\s*,\s*\|/g)) {
       const fin = src.indexOf("reg.registrar", m.index + 10);
@@ -138,6 +144,12 @@ export function desdeFuente(dirCrates) {
         }
         if (d) valores.add(d[1]);
         if (valores.size > 1) enums[clave] = [...valores];
+      }
+      // opcion(b, "clave", &["a", "b"], "defecto")
+      for (const m of cuerpo.matchAll(new RegExp(`opcion\\(\\s*&?${VAR_BLOQUE}\\s*,\\s*"([A-Za-z0-9_]+)"\\s*,\\s*&\\[([^\\]]*)\\]\\s*,\\s*"([^"]*)"`, "g"))) {
+        claves.add(m[1]);
+        enums[m[1]] = [...m[2].matchAll(/"([^"]*)"/g)].map((x) => x[1]);
+        defs[m[1]] = m[3];
       }
       for (const m of cuerpo.matchAll(RE_LLAMADA)) visitar(m[1], prof + 1);
     };

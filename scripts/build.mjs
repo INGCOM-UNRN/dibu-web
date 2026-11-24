@@ -54,7 +54,7 @@ function esquema() {
     if (r.error) throw new Error(r.error);
     return r.root;
   };
-  const textos = ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "kitchen_sink/kitchen_sink.yaml"]
+  const textos = ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "diagramas_comp.yaml", "diagramas_math.yaml", "kitchen_sink/kitchen_sink.yaml"]
     .map((f) => join(dibu, "fixtures", f))
     .filter(existsSync)
     .map((f) => readFileSync(f, "utf8"));
@@ -77,7 +77,7 @@ const js = (v) =>
 const datos = `window.DIBU = {
   wasm: ${js(wasm.toString("base64"))},
   worker: ${js(leer(join(web, "worker.js")))},
-  catalogo: ${js(fixture("kitchen_sink/kitchen_sink.yaml"))},
+  catalogo: ${js([fixture("kitchen_sink/kitchen_sink.yaml"), fixture("diagramas_comp.yaml"), fixture("diagramas_math.yaml")].join("\n"))},
   markdown: ${js(fixture("kitchen_sink/kitchen_sink.md"))},
   esquema: ${js(esquema())}
 };`;

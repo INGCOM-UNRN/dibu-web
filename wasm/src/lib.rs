@@ -16,6 +16,8 @@ fn registro() -> &'static Registro {
         dibu_cs::registrar(&mut reg);
         dibu_control::registrar(&mut reg);
         dibu_chem::registrar(&mut reg);
+        dibu_comp::registrar(&mut reg);
+        dibu_math::registrar(&mut reg);
         reg
     })
 }
