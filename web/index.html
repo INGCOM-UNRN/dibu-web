@@ -88,6 +88,7 @@
 <footer class="estado">
   <span id="e-motor">Cargando motor…</span>
   <span id="e-bloques"></span>
+  <span id="e-campo" aria-live="polite"></span>
   <span class="flex"></span>
   <span id="e-tiempo"></span>
   <span id="e-cursor">Ln 1, Col 1</span>
@@ -102,6 +103,8 @@
       <li><b>Markdown</b>: cada fence <code>```estructura</code> o <code>```statics</code> genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>.</li>
       <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>
       <li><b>Visual</b> (<kbd>Ctrl</kbd>+<kbd>E</kbd>): editá el diagrama seleccionado con formularios. Los campos sugeridos salen de los ejemplos y del código del motor; arrastrá la etiqueta de un número para variarlo en vivo. Los cambios se escriben en el código al instante.</li>
+      <li><b>Asistente</b>: al escribir una clave o un valor aparecen sugerencias tomadas de los ejemplos y del código del motor (<kbd>Ctrl</kbd>+<kbd>Espacio</kbd> las fuerza). Elegir el <code>type</code> de un bloque vacío lo completa con los campos de ejemplo (<kbd>Shift</kbd>+<kbd>Enter</kbd>: sólo el tipo). La barra inferior describe el campo bajo el cursor y avisa si no lo reconoce.</li>
+      <li>Edición: <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> mover líneas · <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> duplicar · <kbd>Ctrl</kbd>+<kbd>/</kbd> comentar · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> borrar línea · Enter mantiene la sangría y continúa listas.</li>
       <li>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>O</kbd> abrir · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> renderizar ya · <kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd> indentar.</li>
     </ul>
     <h3>Tipos disponibles <small id="a-cuenta"></small></h3>

@@ -660,18 +660,10 @@ function indentar(menos) {
 }
 
 function alTeclear(ev) {
+  // Autocompletado, Enter inteligente, pares, operaciones de línea: ver asistente.js.
+  if (teclaAsistente(ev)) return;
   const mod = ev.ctrlKey || ev.metaKey;
-  if (ev.key === "Tab" && !mod && !ev.altKey) { ev.preventDefault(); indentar(ev.shiftKey); return; }
-  if (ev.key === "Enter" && !mod && !ev.shiftKey) {
-    // Mantener la indentación de la línea actual (y continuar listas "- ").
-    const t = ui.texto, v = t.value, s = t.selectionStart;
-    const ini = v.lastIndexOf("\n", s - 1) + 1;
-    const linea = v.slice(ini, s);
-    let ind = /^\s*/.exec(linea)[0];
-    if (/:\s*$/.test(linea)) ind += "  ";
-    ev.preventDefault();
-    reemplazarSeleccion(s, t.selectionEnd, "\n" + ind, s + 1 + ind.length);
-  }
+  if (ev.key === "Tab" && !mod && !ev.altKey) { ev.preventDefault(); indentar(ev.shiftKey); }
 }
 
 function atajosGlobales(ev) {
@@ -980,6 +972,7 @@ function conectarEventos() {
 async function arrancar() {
   configurarDivisor();
   conectarEventos();
+  iniciarAsistente();
   iniciarVisual();
   poblarEjemplos();
   aplicarPaleta();

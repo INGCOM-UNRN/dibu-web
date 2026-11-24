@@ -86,7 +86,7 @@ const sinCierre = (s) => s.replace(/<\/(script|style)/gi, "<\\/$1");
 const html = leer(join(web, "index.html"))
   .replace("/*@ESTILO@*/", () => sinCierre(leer(join(web, "style.css"))))
   .replace("/*@DATOS@*/", () => datos)
-  .replace("/*@APP@*/", () => sinCierre(leer(join(web, "visual.js")) + "\n" + leer(join(web, "app.js"))));
+  .replace("/*@APP@*/", () => sinCierre(["visual.js", "asistente.js", "app.js"].map((f) => leer(join(web, f))).join("\n")));
 
 mkdirSync(dist, { recursive: true });
 const salida = join(dist, "index.html");

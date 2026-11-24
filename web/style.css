@@ -399,3 +399,25 @@ body.soltar .editor { outline: 3px dashed var(--acento); outline-offset: -6px; }
   #divisor { cursor: row-resize; }
   .marca .sub { display: none; }
 }
+
+/* ---------- asistente del editor ---------- */
+#autocompletar {
+  position: absolute;
+  z-index: 20;
+  min-width: 260px;
+  max-width: min(560px, 92%);
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .18);
+  font: 12.5px/1.35 var(--mono);
+  overflow: hidden;
+}
+#autocompletar ul { list-style: none; margin: 0; padding: 3px 0; max-height: 236px; overflow-y: auto; }
+#autocompletar li { display: flex; gap: 14px; align-items: baseline; padding: 3px 10px; cursor: pointer; white-space: nowrap; }
+#autocompletar li.sel { background: var(--acento-suave); }
+#autocompletar .ac-et { color: var(--tk-clave); font-weight: 600; }
+#autocompletar .ac-de { color: var(--tenue); font: 11.5px var(--sans); overflow: hidden; text-overflow: ellipsis; }
+#autocompletar .ac-pie { padding: 3px 10px; border-top: 1px solid var(--borde); color: var(--tenue); font: 11px var(--sans); }
+#e-campo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-family: var(--mono); }
+#e-campo.aviso { color: var(--tk-numero); }
