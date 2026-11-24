@@ -12,6 +12,10 @@ on:
         description: Rama, tag o commit de dibu contra el que se compila
         type: string
         default: main
+      pages:
+        description: Subir además el sitio como artefacto de GitHub Pages
+        type: boolean
+        default: false
     outputs:
       dibu_sha:
         description: Commit de dibu usado
@@ -87,3 +91,7 @@ jobs:
           path: sitio
           include-hidden-files: true
           if-no-files-found: error
+      - if: inputs.pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: sitio

@@ -28,6 +28,7 @@ jobs:
     uses: ./.github/workflows/construir.yml
     with:
       dibu_ref: ${{ github.event.client_payload.ref || inputs.dibu_ref || 'main' }}
+      pages: true
 
   desplegar:
     name: Desplegar en Pages
@@ -40,13 +41,5 @@ jobs:
       name: github-pages
       url: ${{ steps.despliegue.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: editor
-          path: sitio
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: sitio
       - id: despliegue
         uses: actions/deploy-pages@v5
