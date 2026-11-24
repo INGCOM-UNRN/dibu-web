@@ -8,7 +8,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:web": "node scripts/build.mjs --sin-cargo",
-    "test": "node scripts/smoke.mjs && node scripts/yaml-roundtrip.mjs",
+    "test": "node scripts/smoke.mjs && node scripts/yaml-roundtrip.mjs && node scripts/asistente.test.mjs",
     "test:navegador": "node scripts/navegador.mjs"
   }
 }

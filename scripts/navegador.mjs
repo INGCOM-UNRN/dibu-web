@@ -145,6 +145,78 @@ if (campo) {
   comprobar("lista de bloques", lista === 1, `${lista} elemento(s)`);
 }
 
+// 7. Asistente del editor de código: autocompletado, ejemplo al elegir el tipo y líneas.
+await ev(`${$("#t-codigo")}.click()`);
+const MODS = { alt: 1, ctrl: 2, shift: 8 };
+const CODIGOS = { Enter: 13, ArrowUp: 38, ArrowDown: 40, Escape: 27, Tab: 9, "/": 191 };
+async function tecla(key, ...mods) {
+  const modifiers = mods.reduce((a, m) => a | MODS[m], 0);
+  const code = key === "/" ? "Slash" : key;
+  const base = { key, code, windowsVirtualKeyCode: CODIGOS[key], modifiers };
+  await cmd("Input.dispatchKeyEvent", { type: "rawKeyDown", ...base });
+  await cmd("Input.dispatchKeyEvent", { type: "keyUp", ...base });
+  await esperar(60);
+}
+async function escribir(texto) {
+  for (const ch of texto) { await cmd("Input.insertText", { text: ch }); await esperar(25); }
+  await esperar(80);
+}
+/** Tecla con texto: pasa por keydown (como un usuario) y, si nadie la cancela, inserta el carácter. */
+async function teclear(texto) {
+  for (const ch of texto) {
+    await cmd("Input.dispatchKeyEvent", { type: "keyDown", key: ch, text: ch, unmodifiedText: ch });
+    await cmd("Input.dispatchKeyEvent", { type: "keyUp", key: ch });
+    await esperar(25);
+  }
+  await esperar(80);
+}
+const cursorAlFinal = () => ev(`(() => { const x = ${$("#texto")}; x.focus(); x.setSelectionRange(x.value.length, x.value.length); })()`);
+const opciones = () => ev(`[...document.querySelectorAll('#autocompletar:not([hidden]) li .ac-et')].map(e => e.textContent)`);
+await fijarTexto(JSON.stringify(""));
+await cursorAlFinal();
+await escribir("- t");
+const op1 = await opciones();
+comprobar("sugiere «type» en un bloque nuevo", op1[0] === "type", op1.slice(0, 3).join(", "));
+await tecla("Enter");
+await escribir("bod");
+const op2 = await opciones();
+comprobar("sugiere tipos al escribir el valor", op2[0] === "bode", op2.slice(0, 3).join(", "));
+await tecla("Enter");
+const conEjemplo = await ev(`${$("#texto")}.value`);
+comprobar("elegir el tipo completa los campos de ejemplo", /^- type: bode\n  \w+:/.test(conEjemplo) && conEjemplo.split("\n").length > 3, JSON.stringify(conEjemplo.slice(0, 40)));
+const renderBode = await hasta(`${tarjetasOk} === 1 && ${$(".tarjeta .tipo")}.textContent`);
+comprobar("el bloque completado renderiza", renderBode === "bode", renderBode);
+await ev(`(() => { const x = ${$("#texto")}; const p = x.value.indexOf("\\n") + 3; x.setSelectionRange(p, p); x.dispatchEvent(new Event("keyup")); })()`);
+const ayuda = await hasta(`${$("#e-campo")}.textContent.startsWith("bode ›") && ${$("#e-campo")}.textContent`);
+comprobar("ayuda del campo bajo el cursor", !!ayuda, ayuda);
+await fijarTexto(JSON.stringify("- type: bode\n  sistem: 1"));
+await cursorAlFinal();
+await ev(`${$("#texto")}.dispatchEvent(new Event("keyup"))`);
+const aviso = await hasta(`${$("#e-campo")}.classList.contains("aviso") && ${$("#e-campo")}.textContent`);
+comprobar("avisa de un campo desconocido", /desconocido/.test(aviso || ""), aviso);
+
+await fijarTexto(JSON.stringify("a\nb\nc"));
+await cursorAlFinal();
+await tecla("ArrowUp", "alt");
+comprobar("Alt+↑ mueve la línea", (await ev(`${$("#texto")}.value`)) === "a\nc\nb");
+await tecla("ArrowDown", "alt", "shift");
+comprobar("Shift+Alt+↓ duplica la línea", (await ev(`${$("#texto")}.value`)) === "a\nc\nc\nb");
+await tecla("/", "ctrl");
+const comentado = await ev(`${$("#texto")}.value`);
+comprobar("Ctrl+/ comenta la línea", comentado === "a\nc\n# c\nb", JSON.stringify(comentado));
+await fijarTexto(JSON.stringify("- type: array\n  values: "));
+await cursorAlFinal();
+await teclear("[");
+comprobar("cierra corchetes", (await ev(`${$("#texto")}.value`)).endsWith("values: []"));
+await teclear("1, 2]");
+const sinDoble = await ev(`${$("#texto")}.value`);
+comprobar("saltea el cierre ya escrito", sinDoble.endsWith("values: [1, 2]"), JSON.stringify(sinDoble.slice(-16)));
+await tecla("Enter");
+await escribir("ti");
+await tecla("Enter");
+const enter = await ev(`${$("#texto")}.value`);
+comprobar("Enter mantiene la sangría y completa la clave", enter.endsWith("\n  title: "), JSON.stringify(enter.slice(-14)));
+
 comprobar("sin excepciones de JavaScript", excepciones.length === 0, excepciones.slice(0, 3).join(" | "));
 console.log(fallas ? `✗ ${fallas} comprobación(es) fallida(s)` : "✓ prueba de navegador completa");
 terminar(fallas ? 1 : 0);
