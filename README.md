@@ -8,8 +8,9 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
 
 ## Funciones
 
-- Soporta los 44 tipos de `dibu` (control de procesos, química, computación). Usa el mismo
-  motor que la CLI, así que la salida es la misma.
+- Soporta los 70 tipos de `dibu` (control de procesos, química, estructuras de datos, sistemas
+  digitales, arquitectura, sistemas operativos, redes, bases de datos, señales, probabilidad y
+  circuitos). Usa el mismo motor que la CLI, así que la salida es la misma.
 - Formatos: YAML/JSON (lista de bloques, bloque suelto o `{blocks: [...]}`) y **Markdown** con
   fences ` ```estructura ` / ` ```statics ` / `~~~…`. En Markdown, cada fence genera el SVG
   apilado con el mismo nombre `estructura-<hash>.svg` que produce `dibu sync-md`.
@@ -73,7 +74,7 @@ se toman de `$DIBU_DIR/fixtures/kitchen_sink/` (por defecto `../dibu`).
 ## Estructura
 
 ```
-wasm/            crate puente (cdylib, ABI C sin wasm-bindgen) sobre dibu-core/cs/control/chem
+wasm/            crate puente (cdylib, ABI C sin wasm-bindgen) sobre dibu-core/cs/control/chem/comp/math
   src/lib.rs     dibu_types · dibu_render · dibu_render_md · dibu_stack · dibu_parse
 web/
   index.html     plantilla (el build inserta estilos, datos y script)
