@@ -96,6 +96,7 @@ dependencies = [
  "dibu-core",
  "dibu-cs",
  "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

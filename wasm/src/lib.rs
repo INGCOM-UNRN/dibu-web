@@ -79,9 +79,10 @@ pub unsafe extern "C" fn dibu_render(ptr: *mut u8, len: usize, tinta: u32) -> us
         .map(|b| {
             let tipo = b.get("type").and_then(Value::as_str).unwrap_or("");
             let id = b.get("id").and_then(Value::as_str).unwrap_or("");
+            let titulo = b.get("title").and_then(Value::as_str).unwrap_or("");
             match reg.renderizar(b, tinta != 0) {
-                Ok(svg) => json!({ "type": tipo, "id": id, "svg": svg }),
-                Err(e) => json!({ "type": tipo, "id": id, "error": e.to_string() }),
+                Ok(svg) => json!({ "type": tipo, "id": id, "title": titulo, "svg": svg }),
+                Err(e) => json!({ "type": tipo, "id": id, "title": titulo, "error": e.to_string() }),
             }
         })
         .collect();
@@ -97,16 +98,17 @@ pub unsafe extern "C" fn dibu_render_md(ptr: *mut u8, len: usize, tinta: u32) ->
         Err(e) => return responder(json!({ "error": e })),
     };
     let nombre = nombre_svg(&cuerpo);
-    let tipos: Vec<String> = leer_bloques(&cuerpo)
-        .map(|bs| {
-            bs.iter()
-                .filter_map(|b| b.get("type").and_then(Value::as_str).map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
+    let bloques = leer_bloques(&cuerpo).unwrap_or_default();
+    let campo = |k: &str| -> Vec<String> {
+        bloques
+            .iter()
+            .map(|b| b.get(k).and_then(Value::as_str).unwrap_or("").to_string())
+            .collect()
+    };
+    let (tipos, titulos) = (campo("type"), campo("title"));
     match registro().renderizar_bloque_markdown(&cuerpo, tinta != 0) {
-        Ok(svg) => responder(json!({ "name": nombre, "types": tipos, "svg": svg })),
-        Err(e) => responder(json!({ "name": nombre, "types": tipos, "error": e.to_string() })),
+        Ok(svg) => responder(json!({ "name": nombre, "types": tipos, "titles": titulos, "svg": svg })),
+        Err(e) => responder(json!({ "name": nombre, "types": tipos, "titles": titulos, "error": e.to_string() })),
     }
 }
 
@@ -124,5 +126,78 @@ pub unsafe extern "C" fn dibu_stack(ptr: *mut u8, len: usize) -> usize {
     match apilar_svgs(&svgs) {
         Ok(svg) => responder(json!({ "svg": svg })),
         Err(e) => responder(json!({ "error": e.to_string() })),
+    }
+}
+
+/// Escribe un `serde_yaml::Value` como JSON conservando el orden de las claves
+/// (serde_json::Map de dibu las ordena alfabéticamente; el editor visual necesita el original).
+fn yaml_a_json(v: &serde_yaml::Value, out: &mut String) {
+    use serde_yaml::Value as Y;
+    match v {
+        Y::Null => out.push_str("null"),
+        Y::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+        Y::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                out.push_str(&i.to_string());
+            } else if let Some(u) = n.as_u64() {
+                out.push_str(&u.to_string());
+            } else {
+                match n.as_f64() {
+                    Some(f) if f.is_finite() => out.push_str(&serde_json::to_string(&f).unwrap_or_else(|_| "null".into())),
+                    _ => out.push_str("null"),
+                }
+            }
+        }
+        Y::String(s) => out.push_str(&serde_json::to_string(s).unwrap_or_default()),
+        Y::Sequence(seq) => {
+            out.push('[');
+            for (i, x) in seq.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                yaml_a_json(x, out);
+            }
+            out.push(']');
+        }
+        Y::Mapping(m) => {
+            out.push('{');
+            for (i, (k, x)) in m.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                let clave = match k {
+                    Y::String(s) => s.clone(),
+                    otro => serde_yaml::to_string(otro).unwrap_or_default().trim().to_string(),
+                };
+                out.push_str(&serde_json::to_string(&clave).unwrap_or_default());
+                out.push(':');
+                yaml_a_json(x, out);
+            }
+            out.push('}');
+        }
+        Y::Tagged(t) => yaml_a_json(&t.value, out),
+    }
+}
+
+/// Parsea YAML/JSON y devuelve la raíz tal cual (`{"root": …}`) con el orden de claves original.
+#[no_mangle]
+pub unsafe extern "C" fn dibu_parse(ptr: *mut u8, len: usize) -> usize {
+    let texto = match tomar_texto(ptr, len) {
+        Ok(t) => t,
+        Err(e) => return responder(json!({ "error": e })),
+    };
+    let texto = texto.strip_prefix('\u{feff}').unwrap_or(&texto);
+    match serde_yaml::from_str::<serde_yaml::Value>(texto) {
+        Ok(v) => {
+            let mut s = String::from("{\"root\":");
+            yaml_a_json(&v, &mut s);
+            s.push('}');
+            SALIDA.with(|o| {
+                let mut o = o.borrow_mut();
+                *o = s.into_bytes();
+                o.len()
+            })
+        }
+        Err(e) => responder(json!({ "error": format!("el bloque no es YAML/JSON válido: {e}") })),
     }
 }
