@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { construirEsquema, desdeFixtures, desdeFuente } from "./esquema.mjs";
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dibu = resolve(process.env.DIBU_DIR || join(raiz, "..", "dibu"));
@@ -40,6 +41,27 @@ try {
 }
 
 const leer = (p) => readFileSync(p, "utf8");
+
+// Esquema de campos por tipo (fixtures parseados con el propio motor + código fuente de dibu).
+function esquema() {
+  const ex = new WebAssembly.Instance(new WebAssembly.Module(wasm), {}).exports;
+  const parsear = (t) => {
+    const b = new TextEncoder().encode(t);
+    const p = ex.dibu_alloc(b.length);
+    new Uint8Array(ex.memory.buffer, p, b.length).set(b);
+    const n = ex.dibu_parse(p, b.length);
+    const r = JSON.parse(new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ex.dibu_out_ptr(), n)));
+    if (r.error) throw new Error(r.error);
+    return r.root;
+  };
+  const textos = ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "kitchen_sink/kitchen_sink.yaml"]
+    .map((f) => join(dibu, "fixtures", f))
+    .filter(existsSync)
+    .map((f) => readFileSync(f, "utf8"));
+  const e = construirEsquema(desdeFixtures(textos, parsear), desdeFuente(join(dibu, "crates")));
+  console.log(`· esquema: ${Object.keys(e).length} tipos`);
+  return e;
+}
 const fixture = (rel) => {
   const p = join(dibu, "fixtures", rel);
   if (!existsSync(p)) {
@@ -56,14 +78,15 @@ const datos = `window.DIBU = {
   wasm: ${js(wasm.toString("base64"))},
   worker: ${js(leer(join(web, "worker.js")))},
   catalogo: ${js(fixture("kitchen_sink/kitchen_sink.yaml"))},
-  markdown: ${js(fixture("kitchen_sink/kitchen_sink.md"))}
+  markdown: ${js(fixture("kitchen_sink/kitchen_sink.md"))},
+  esquema: ${js(esquema())}
 };`;
 
 const sinCierre = (s) => s.replace(/<\/(script|style)/gi, "<\\/$1");
 const html = leer(join(web, "index.html"))
   .replace("/*@ESTILO@*/", () => sinCierre(leer(join(web, "style.css"))))
   .replace("/*@DATOS@*/", () => datos)
-  .replace("/*@APP@*/", () => sinCierre(leer(join(web, "app.js"))));
+  .replace("/*@APP@*/", () => sinCierre(leer(join(web, "visual.js")) + "\n" + leer(join(web, "app.js"))));
 
 mkdirSync(dist, { recursive: true });
 const salida = join(dist, "index.html");
