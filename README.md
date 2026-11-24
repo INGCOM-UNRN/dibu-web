@@ -26,6 +26,20 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   reescribe sólo las líneas de ese bloque en el código (en YAML, o en JSON si el documento era
   JSON) y la vista previa se actualiza al instante. Al hacer clic en una tarjeta, se selecciona
   su bloque en el formulario.
+- **Asistente del editor de código**:
+  - Autocompletado según el contexto: al escribir una clave sugiere los campos del tipo y del
+    objeto donde está el cursor (por ejemplo `system.` en un Bode o `forward[]` en un
+    diagrama de bloques), sin repetir los que ya están. Después de `clave: ` sugiere los
+    valores admitidos y `true`/`false`; <kbd>Ctrl</kbd>+<kbd>Espacio</kbd> fuerza las
+    sugerencias y agrega los valores de ejemplo.
+  - Elegir el `type` de un bloque vacío lo completa con los campos del ejemplo del catálogo
+    (<kbd>Shift</kbd>+<kbd>Enter</kbd> inserta sólo el tipo).
+  - La barra de estado describe el campo bajo el cursor (tipo, valores, valor por defecto) y
+    avisa si el tipo no lo reconoce, con la clave más parecida.
+  - Enter mantiene la sangría, entra en `clave:`, continúa listas y termina un `- ` vacío.
+    Cierra `[`, `{` y `"`, y Retroceso borra un nivel de sangría.
+  - <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> mueve líneas, <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>
+    las duplica, <kbd>Ctrl</kbd>+<kbd>/</kbd> comenta y <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> borra.
 - Los campos sugeridos salen de un esquema por tipo que se genera en el build
   (`scripts/esquema.mjs`) a partir de dos fuentes: los fixtures de dibu, parseados con el propio
   motor (tipos de valor, ejemplos y estructura anidada), y el código Rust de los renderizadores
@@ -48,7 +62,7 @@ tiene que estar al lado (`../dibu`), porque el crate puente lo usa por ruta.
 # Fedora: sudo dnf install rust-std-static-wasm32-unknown-unknown
 # rustup: rustup target add wasm32-unknown-unknown
 npm run build        # compila el motor y genera dist/index.html
-npm test             # smoke test del motor + round-trip del serializador YAML del editor visual
+npm test             # smoke test del motor, round-trip del serializador YAML y contexto del asistente
 npm run test:navegador  # prueba de extremo a extremo de dist/index.html en Chrome headless
 npm run build:web    # sólo reempaqueta HTML/CSS/JS (sin recompilar Rust)
 ```
@@ -65,11 +79,13 @@ web/
   index.html     plantilla (el build inserta estilos, datos y script)
   app.js         editor, resaltado, troceo en bloques, sincronización, exportación
   visual.js      editor visual: inspector de formularios y serializador YAML/JSON
+  asistente.js   autocompletado, ayuda del campo y operaciones de línea del editor de código
   worker.js      Web Worker que instancia el WASM
   style.css      tema claro/oscuro
 scripts/
   build.mjs      genera dist/index.html autocontenido
   esquema.mjs    extrae el esquema de campos por tipo (fixtures + código fuente)
+  asistente.test.mjs  análisis de contexto del asistente (ruta, tipo, claves, Markdown)
   yaml-roundtrip.mjs  verifica que parsear → serializar → parsear conserve cada bloque
   smoke.mjs      prueba del motor contra los fixtures de dibu
   navegador.mjs  prueba del editor en Chrome/Chromium headless (protocolo DevTools, sin dependencias)
