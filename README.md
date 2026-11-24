@@ -49,6 +49,7 @@ tiene que estar al lado (`../dibu`), porque el crate puente lo usa por ruta.
 # rustup: rustup target add wasm32-unknown-unknown
 npm run build        # compila el motor y genera dist/index.html
 npm test             # smoke test del motor + round-trip del serializador YAML del editor visual
+npm run test:navegador  # prueba de extremo a extremo de dist/index.html en Chrome headless
 npm run build:web    # sólo reempaqueta HTML/CSS/JS (sin recompilar Rust)
 ```
 
@@ -71,7 +72,32 @@ scripts/
   esquema.mjs    extrae el esquema de campos por tipo (fixtures + código fuente)
   yaml-roundtrip.mjs  verifica que parsear → serializar → parsear conserve cada bloque
   smoke.mjs      prueba del motor contra los fixtures de dibu
+  navegador.mjs  prueba del editor en Chrome/Chromium headless (protocolo DevTools, sin dependencias)
 ```
+
+## Integración continua y publicación
+
+Workflows en `.github/workflows/`. Todos clonan `INGCOM-UNRN/dibu` junto a este repositorio
+y comparten `construir.yml`: compila el motor, genera `dist/index.html` y corre `npm test` y
+la prueba de navegador.
+
+- `ci.yml`: en cada pull request y en las ramas distintas de `main`.
+- `pages.yml`: publica el editor en GitHub Pages en cada push a `main`, cuando `dibu` publica
+  un release (evento `dibu-release`, que trae el tag a compilar), o a mano eligiendo la rama o
+  el tag de `dibu`. Junto al editor se publica `version.json` con los commits usados.
+- `release.yml`: al empujar un tag `vX.Y.Z` igual a la versión de `package.json`, adjunta al
+  release el HTML autocontenido `dibu-web-vX.Y.Z.html`.
+- `mantenimiento.yml`: los lunes compila contra `dibu` `main`, para detectar enseguida
+  cambios del motor que rompan el editor, y audita `wasm/Cargo.lock` con `cargo audit`.
+
+Configuración necesaria una sola vez:
+
+1. **Settings → Pages → Source: GitHub Actions.**
+2. Mientras `dibu` sea privado, el secreto **`DIBU_TOKEN`** en este repositorio: un token
+   fine-grained con permiso *Contents: read* sobre `INGCOM-UNRN/dibu`.
+3. Para republicar automáticamente con cada release de `dibu`, el secreto
+   **`DIBU_WEB_DISPATCH_TOKEN`** en el repositorio `dibu`: un token fine-grained con
+   *Contents: read and write* sobre `INGCOM-UNRN/dibu-web`.
 
 ## Nota sobre precisión numérica
 

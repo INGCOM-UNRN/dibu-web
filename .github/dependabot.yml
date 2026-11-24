@@ -1,0 +1,13 @@
+# Las dependencias Rust del puente WASM apuntan a dibu por ruta (../../dibu), que Dependabot
+# no puede resolver; se actualizan a mano (cargo update en wasm/). Aquí sólo las Actions.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,94 @@
+# Workflow reutilizable: compila el motor dibu a WebAssembly, genera dist/index.html,
+# corre todas las pruebas y deja el sitio listo como artefacto `editor`.
+#
+# Necesita el código de dibu: se clona INGCOM-UNRN/dibu junto a este repositorio
+# (la misma disposición ../dibu que en desarrollo). Mientras dibu sea privado hace
+# falta el secreto DIBU_TOKEN: un PAT fine-grained con "Contents: read" sobre dibu.
+name: Construir
+
+on:
+  workflow_call:
+    inputs:
+      dibu_ref:
+        description: Rama, tag o commit de dibu contra el que se compila
+        type: string
+        default: main
+    secrets:
+      DIBU_TOKEN:
+        required: false
+    outputs:
+      dibu_sha:
+        description: Commit de dibu usado
+        value: ${{ jobs.construir.outputs.dibu_sha }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  construir:
+    name: Compilar y probar
+    runs-on: ubuntu-latest
+    outputs:
+      dibu_sha: ${{ steps.dibu.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: dibu-web
+      - name: Clonar dibu (${{ inputs.dibu_ref }})
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/dibu
+          ref: ${{ inputs.dibu_ref }}
+          path: dibu
+          token: ${{ secrets.DIBU_TOKEN || github.token }}
+      - id: dibu
+        run: echo "sha=$(git -C dibu rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dibu-web/wasm -> target
+      - name: binaryen (wasm-opt, opcional)
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q binaryen || echo "sin binaryen, el wasm no se optimiza"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Sintaxis JavaScript
+        working-directory: dibu-web
+        run: for f in web/*.js scripts/*.mjs; do node --check "$f"; done
+      - name: Build (motor WASM + dist/index.html)
+        working-directory: dibu-web
+        run: npm run build
+      - name: Pruebas del motor y del serializador YAML
+        working-directory: dibu-web
+        run: npm test
+      - name: Prueba de navegador (Chrome headless)
+        working-directory: dibu-web
+        run: npm run test:navegador
+
+      - name: Preparar sitio
+        run: |
+          set -euo pipefail
+          mkdir -p sitio
+          cp dibu-web/dist/index.html sitio/index.html
+          touch sitio/.nojekyll
+          cat > sitio/version.json <<JSON
+          {"dibu": "${{ steps.dibu.outputs.sha }}", "dibu_ref": "${{ inputs.dibu_ref }}", "dibu_web": "${{ github.sha }}"}
+          JSON
+          ls -l sitio
+          echo "### Editor generado" >> "$GITHUB_STEP_SUMMARY"
+          echo "- dibu: \`${{ inputs.dibu_ref }}\` ($(git -C dibu log -1 --format='%h %s'))" >> "$GITHUB_STEP_SUMMARY"
+          echo "- tamaño: $(du -h sitio/index.html | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: editor
+          path: sitio
+          include-hidden-files: true
+          if-no-files-found: error

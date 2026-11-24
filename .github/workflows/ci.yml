@@ -1,0 +1,26 @@
+# Pruebas en cada pull request (y en ramas que no sean main; main lo cubre pages.yml).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+    inputs:
+      dibu_ref:
+        description: Rama, tag o commit de dibu
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  construir:
+    uses: ./.github/workflows/construir.yml
+    with:
+      dibu_ref: ${{ inputs.dibu_ref || 'main' }}
+    secrets: inherit

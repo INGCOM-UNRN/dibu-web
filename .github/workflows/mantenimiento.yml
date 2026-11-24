@@ -1,0 +1,31 @@
+# Tareas periódicas:
+#  - compatibilidad: compila y prueba contra la rama main de dibu, para detectar
+#    cuanto antes cambios del motor que rompan el editor;
+#  - auditoría RustSec de las dependencias del puente WASM.
+name: Mantenimiento
+
+on:
+  schedule:
+    - cron: "41 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibilidad:
+    name: Compatibilidad con dibu main
+    uses: ./.github/workflows/construir.yml
+    with:
+      dibu_ref: main
+    secrets: inherit
+
+  auditoria:
+    name: cargo audit (wasm/Cargo.lock)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - run: cargo audit --deny warnings --file wasm/Cargo.lock

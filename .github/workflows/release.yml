@@ -1,0 +1,80 @@
+# Release del editor: al empujar un tag vX.Y.Z adjunta el HTML autocontenido
+# (dibu-web-vX.Y.Z.html), que funciona descargado y abierto sin conexión.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag existente a publicar (p. ej. v0.2.0)
+        required: true
+      dibu_ref:
+        description: Rama, tag o commit de dibu
+        default: main
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  version:
+    name: Validar versión
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - name: El tag coincide con package.json
+        run: |
+          v=$(node -p 'require("./package.json").version')
+          [ "v$v" = "$TAG" ] || { echo "::error::El tag $TAG no coincide con package.json ($v)"; exit 1; }
+
+  construir:
+    needs: version
+    uses: ./.github/workflows/construir.yml
+    with:
+      dibu_ref: ${{ inputs.dibu_ref || 'main' }}
+    secrets: inherit
+
+  publicar:
+    name: Publicar release
+    needs: construir
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          name: editor
+          path: sitio
+      - name: Crear o actualizar el release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp sitio/index.html "dibu-web-$TAG.html"
+          sha256sum "dibu-web-$TAG.html" > SHA256SUMS
+          previo=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+          {
+            echo "Editor de diagramas dibu en un único archivo HTML: descargarlo y abrirlo en el navegador (funciona sin conexión)."
+            echo
+            echo "Motor: dibu \`${{ needs.construir.outputs.dibu_sha }}\`"
+            echo
+            echo "### Cambios"
+            echo
+            git log --no-merges --format='- %s (%h)' ${previo:+$previo..}"$TAG"
+          } > NOTAS.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "dibu-web-$TAG.html" SHA256SUMS --clobber
+            gh release edit "$TAG" --notes-file NOTAS.md
+          else
+            gh release create "$TAG" "dibu-web-$TAG.html" SHA256SUMS --title "dibu-web $TAG" --notes-file NOTAS.md --verify-tag
+          fi
