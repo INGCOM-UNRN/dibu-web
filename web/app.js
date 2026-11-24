@@ -829,10 +829,13 @@ function insertarEjemplo(it) {
 }
 
 function textoInicial() {
-  const elegidos = ["block_diagram", "array", "titration", "bode", "lewis"].map((k) => ejemploPorTipo.get(k)).filter(Boolean).slice(0, 3);
+  // Un ejemplo por área: control, química, digital, sistemas operativos y probabilidad.
+  const elegidos = ["block_diagram", "titration", "karnaugh", "cpu_scheduling", "distribution"]
+    .map((k) => ejemploPorTipo.get(k)).filter(Boolean);
   const base = elegidos.length ? elegidos : catalogo.flatMap((s) => s.items).slice(0, 3);
   return "# Bienvenido a dibu. Cada elemento de la lista es un diagrama.\n" +
-    "# Insertá más ejemplos desde el menú «Insertar» o abrí un .yaml / .md.\n\n" +
+    "# Hay más ejemplos en el menú «Insertar» (uno por tipo, agrupados por área) y en\n" +
+    "# «Catálogo completo». También podés abrir un .yaml / .md o arrastrarlo a la ventana.\n\n" +
     base.map((b) => b.texto).join("\n\n") + "\n";
 }
 

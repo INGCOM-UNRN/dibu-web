@@ -77,7 +77,7 @@ const js = (v) =>
 const datos = `window.DIBU = {
   wasm: ${js(wasm.toString("base64"))},
   worker: ${js(leer(join(web, "worker.js")))},
-  catalogo: ${js([fixture("kitchen_sink/kitchen_sink.yaml"), fixture("diagramas_comp.yaml"), fixture("diagramas_math.yaml")].join("\n"))},
+  catalogo: ${js(fixture("kitchen_sink/kitchen_sink.yaml"))},
   markdown: ${js(fixture("kitchen_sink/kitchen_sink.md"))},
   esquema: ${js(esquema())}
 };`;
