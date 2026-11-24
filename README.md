@@ -17,6 +17,19 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   desplazar el editor, la vista previa lo acompaña. Un clic en un diagrama lleva a su bloque.
 - Cada bloque se renderiza por separado y se guarda en caché. Un error afecta solo a su bloque,
   aparece marcado en la línea correcta y la tarjeta sigue mostrando atenuado el último SVG válido.
+- **Editor visual** (pestaña *Visual*, <kbd>Ctrl</kbd>+<kbd>E</kbd>): formulario para el bloque
+  seleccionado, con un widget según el tipo de cada campo: interruptores para sí/no, números que
+  se ajustan arrastrando la etiqueta (Shift ×10, Alt ÷10), listas desplegables para los valores
+  enumerados y sugerencias de valores de ejemplo. Las listas y los objetos anidados se pueden
+  plegar, y se pueden agregar, quitar y reordenar elementos y campos. Se puede cambiar el tipo
+  del bloque, y crear, duplicar, mover o eliminar bloques con deshacer/rehacer. Cada cambio
+  reescribe sólo las líneas de ese bloque en el código (en YAML, o en JSON si el documento era
+  JSON) y la vista previa se actualiza al instante. Al hacer clic en una tarjeta, se selecciona
+  su bloque en el formulario.
+- Los campos sugeridos salen de un esquema por tipo que se genera en el build
+  (`scripts/esquema.mjs`) a partir de dos fuentes: los fixtures de dibu, parseados con el propio
+  motor (tipos de valor, ejemplos y estructura anidada), y el código Rust de los renderizadores
+  (claves leídas, valores de `matches!`/`match` y valores por defecto de `unwrap_or`).
 - Paletas *tinta* / *color*, zoom, exportación por diagrama (SVG, PNG 2×, copiar) y
   "Exportar todo" (un único SVG apilado).
 - Catálogo de ejemplos (el *kitchen sink* de `dibu`) insertable por tipo.
@@ -35,7 +48,7 @@ tiene que estar al lado (`../dibu`), porque el crate puente lo usa por ruta.
 # Fedora: sudo dnf install rust-std-static-wasm32-unknown-unknown
 # rustup: rustup target add wasm32-unknown-unknown
 npm run build        # compila el motor y genera dist/index.html
-npm test             # smoke test del motor contra los fixtures de dibu
+npm test             # smoke test del motor + round-trip del serializador YAML del editor visual
 npm run build:web    # sólo reempaqueta HTML/CSS/JS (sin recompilar Rust)
 ```
 
@@ -46,14 +59,17 @@ se toman de `$DIBU_DIR/fixtures/kitchen_sink/` (por defecto `../dibu`).
 
 ```
 wasm/            crate puente (cdylib, ABI C sin wasm-bindgen) sobre dibu-core/cs/control/chem
-  src/lib.rs     dibu_types · dibu_render · dibu_render_md · dibu_stack
+  src/lib.rs     dibu_types · dibu_render · dibu_render_md · dibu_stack · dibu_parse
 web/
   index.html     plantilla (el build inserta estilos, datos y script)
   app.js         editor, resaltado, troceo en bloques, sincronización, exportación
+  visual.js      editor visual: inspector de formularios y serializador YAML/JSON
   worker.js      Web Worker que instancia el WASM
   style.css      tema claro/oscuro
 scripts/
   build.mjs      genera dist/index.html autocontenido
+  esquema.mjs    extrae el esquema de campos por tipo (fixtures + código fuente)
+  yaml-roundtrip.mjs  verifica que parsear → serializar → parsear conserve cada bloque
   smoke.mjs      prueba del motor contra los fixtures de dibu
 ```
 
