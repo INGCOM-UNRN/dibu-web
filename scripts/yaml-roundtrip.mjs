@@ -25,7 +25,7 @@ const extra = [
   { type: "array", values: [], nested: { a: {}, b: [[1, 2], [3, { c: "d" }]] }, "clave rara": 1, "123": "n" },
 ];
 const bloques = [];
-for (const f of ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "kitchen_sink/kitchen_sink.yaml"]) {
+for (const f of ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "diagramas_comp.yaml", "diagramas_math.yaml", "kitchen_sink/kitchen_sink.yaml"]) {
   bloques.push(...llamar("dibu_parse", readFileSync(join(dibu, "fixtures", f), "utf8")).root);
 }
 for (const b of [...bloques, ...extra]) {

@@ -26,7 +26,7 @@ let fallas = 0;
 const tipos = llamar("dibu_types");
 console.log(`tipos: ${tipos.length}`);
 
-for (const f of ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "kitchen_sink/kitchen_sink.yaml"]) {
+for (const f of ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimica.yaml", "diagramas_comp.yaml", "diagramas_math.yaml", "kitchen_sink/kitchen_sink.yaml"]) {
   const r = llamar("dibu_render", readFileSync(join(dibu, "fixtures", f), "utf8"), 1);
   if (r.error) { console.log(`✗ ${f}: ${r.error}`); fallas++; continue; }
   const malos = r.blocks.filter((b) => b.error);
