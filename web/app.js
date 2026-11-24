@@ -165,13 +165,18 @@ function ajustarError(msg, desplazamiento) {
 // ======================================================================
 // Renderizado
 // ======================================================================
+/** Theme de dibu para la paleta elegida en la barra (los bloques pueden pisarlo con `theme:`). */
+const THEMES = { tinta: "ink", color: "color", contraste: "high-contrast", oscuro: "dark" };
+function sobre(texto) {
+  return JSON.stringify({ text: texto, theme: THEMES[prefs.paleta] || "ink" });
+}
+
 async function calcularTrozo(tr, modo) {
-  const tinta = prefs.paleta === "tinta" ? 1 : 0;
   if (tr.sinCerrar) {
     return { items: [{ error: "el fence no está cerrado", linea: tr.ini }], guardar: false };
   }
   if (modo === "md") {
-    const r = await estado.motor.llamar("dibu_render_md", tr.texto, tinta);
+    const r = await estado.motor.llamar("dibu_render_md_theme", sobre(tr.texto));
     if (!r.ok) return { items: [{ error: r.error, linea: tr.ini }], guardar: false };
     const x = r.resultado;
     const e = x.error ? ajustarError(x.error, tr.cuerpoIni) : null;
@@ -180,7 +185,7 @@ async function calcularTrozo(tr, modo) {
       guardar: true,
     };
   }
-  const r = await estado.motor.llamar("dibu_render", tr.texto, tinta);
+  const r = await estado.motor.llamar("dibu_render_theme", sobre(tr.texto));
   if (!r.ok) return { items: [{ error: r.error, linea: tr.ini }], guardar: false };
   const x = r.resultado;
   if (x.error) {
@@ -870,6 +875,7 @@ function poblarAyuda() {
 // Paneles, preferencias y arranque
 // ======================================================================
 function aplicarPaleta() {
+  if (!THEMES[prefs.paleta]) prefs.paleta = "tinta";
   document.querySelectorAll("[data-paleta]").forEach((b) => b.classList.toggle("activo", b.dataset.paleta === prefs.paleta));
   guardarPrefs();
 }

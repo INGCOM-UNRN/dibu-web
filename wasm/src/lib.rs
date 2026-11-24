@@ -4,7 +4,7 @@
 //! operación (que devuelve la longitud de la respuesta) y lee la respuesta JSON desde
 //! `dibu_out_ptr()`. La memoria de entrada se libera dentro de cada operación.
 
-use dibu_core::{apilar_svgs, leer_bloques, nombre_svg, Registro};
+use dibu_core::{apilar_svgs, leer_bloques, nombre_svg, Registro, Theme};
 use serde_json::{json, Value};
 use std::cell::RefCell;
 use std::sync::OnceLock;
@@ -63,15 +63,53 @@ pub extern "C" fn dibu_types() -> usize {
     responder(json!(registro().tipos()))
 }
 
+#[no_mangle]
+pub extern "C" fn dibu_themes() -> usize {
+    responder(json!(dibu_core::PRESETS))
+}
+
 /// Renderiza un texto YAML/JSON con uno o varios bloques, cada uno por separado.
 /// Respuesta: `{"blocks":[{"type","id","svg"}|{"type","id","error"}]}` o `{"error"}`.
 #[no_mangle]
 pub unsafe extern "C" fn dibu_render(ptr: *mut u8, len: usize, tinta: u32) -> usize {
-    let texto = match tomar_texto(ptr, len) {
-        Ok(t) => t,
-        Err(e) => return responder(json!({ "error": e })),
+    match tomar_texto(ptr, len) {
+        Ok(t) => render_con(&t, &Theme::para_tinta(tinta != 0)),
+        Err(e) => responder(json!({ "error": e })),
+    }
+}
+
+/// Sobre JSON `{ "text": "…", "theme": "dark" | {extends, colors, typography} }`.
+fn leer_sobre(ptr: *mut u8, len: usize) -> Result<(String, Theme), String> {
+    let crudo = unsafe { tomar_texto(ptr, len) }?;
+    let v: Value = serde_json::from_str(&crudo).map_err(|e| format!("sobre JSON inválido: {e}"))?;
+    let texto = v.get("text").and_then(Value::as_str).unwrap_or("").to_string();
+    let tema = match v.get("theme") {
+        None | Some(Value::Null) => Theme::para_tinta(true),
+        Some(t) => Theme::from_value(t, &Theme::para_tinta(true)).map_err(|e| e.to_string())?,
     };
-    let bloques = match leer_bloques(&texto) {
+    Ok((texto, tema))
+}
+
+/// Como `dibu_render`, con el theme dentro del sobre JSON.
+#[no_mangle]
+pub unsafe extern "C" fn dibu_render_theme(ptr: *mut u8, len: usize) -> usize {
+    match leer_sobre(ptr, len) {
+        Ok((t, tema)) => render_con(&t, &tema),
+        Err(e) => responder(json!({ "error": e })),
+    }
+}
+
+/// Como `dibu_render_md`, con el theme dentro del sobre JSON.
+#[no_mangle]
+pub unsafe extern "C" fn dibu_render_md_theme(ptr: *mut u8, len: usize) -> usize {
+    match leer_sobre(ptr, len) {
+        Ok((t, tema)) => render_md_con(&t, &tema),
+        Err(e) => responder(json!({ "error": e })),
+    }
+}
+
+fn render_con(texto: &str, tema: &Theme) -> usize {
+    let bloques = match leer_bloques(texto) {
         Ok(b) => b,
         Err(e) => return responder(json!({ "error": e.to_string() })),
     };
@@ -82,7 +120,7 @@ pub unsafe extern "C" fn dibu_render(ptr: *mut u8, len: usize, tinta: u32) -> us
             let tipo = b.get("type").and_then(Value::as_str).unwrap_or("");
             let id = b.get("id").and_then(Value::as_str).unwrap_or("");
             let titulo = b.get("title").and_then(Value::as_str).unwrap_or("");
-            match reg.renderizar(b, tinta != 0) {
+            match reg.renderizar_con_tema(b, tema) {
                 Ok(svg) => json!({ "type": tipo, "id": id, "title": titulo, "svg": svg }),
                 Err(e) => json!({ "type": tipo, "id": id, "title": titulo, "error": e.to_string() }),
             }
@@ -95,12 +133,15 @@ pub unsafe extern "C" fn dibu_render(ptr: *mut u8, len: usize, tinta: u32) -> us
 /// (bloques apilados) y devuelve además el nombre de archivo `estructura-<hash>.svg`.
 #[no_mangle]
 pub unsafe extern "C" fn dibu_render_md(ptr: *mut u8, len: usize, tinta: u32) -> usize {
-    let cuerpo = match tomar_texto(ptr, len) {
-        Ok(t) => t,
-        Err(e) => return responder(json!({ "error": e })),
-    };
-    let nombre = nombre_svg(&cuerpo);
-    let bloques = leer_bloques(&cuerpo).unwrap_or_default();
+    match tomar_texto(ptr, len) {
+        Ok(t) => render_md_con(&t, &Theme::para_tinta(tinta != 0)),
+        Err(e) => responder(json!({ "error": e })),
+    }
+}
+
+fn render_md_con(cuerpo: &str, tema: &Theme) -> usize {
+    let nombre = nombre_svg(cuerpo);
+    let bloques = leer_bloques(cuerpo).unwrap_or_default();
     let campo = |k: &str| -> Vec<String> {
         bloques
             .iter()
@@ -108,7 +149,7 @@ pub unsafe extern "C" fn dibu_render_md(ptr: *mut u8, len: usize, tinta: u32) ->
             .collect()
     };
     let (tipos, titulos) = (campo("type"), campo("title"));
-    match registro().renderizar_bloque_markdown(&cuerpo, tinta != 0) {
+    match registro().renderizar_bloque_markdown_con_tema(cuerpo, tema) {
         Ok(svg) => responder(json!({ "name": nombre, "types": tipos, "titles": titulos, "svg": svg })),
         Err(e) => responder(json!({ "name": nombre, "types": tipos, "titles": titulos, "error": e.to_string() })),
     }

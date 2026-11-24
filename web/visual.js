@@ -159,6 +159,12 @@ const CAMPOS_COMUNES = {
   subtitle: { k: ["string"], ej: [], nota: "subtítulo" },
   id: { k: ["string"], ej: [], nota: "nombre del archivo al exportar" },
   inkSaver: { k: ["boolean"], ej: [true, false], nota: "paleta ahorro de tinta (pisa la global)" },
+  theme: {
+    k: ["string", "object"],
+    ej: ["ink", "color", "high-contrast", "dark"],
+    en: ["ink", "color", "high-contrast", "dark"],
+    nota: "theme del bloque: un preset o {extends, colors, typography}",
+  },
 };
 
 function esquemaTipo(tipo) {
