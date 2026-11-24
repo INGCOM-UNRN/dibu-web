@@ -45,7 +45,10 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   (`scripts/esquema.mjs`) a partir de dos fuentes: los fixtures de dibu, parseados con el propio
   motor (tipos de valor, ejemplos y estructura anidada), y el código Rust de los renderizadores
   (claves leídas, valores de `matches!`/`match` y valores por defecto de `unwrap_or`).
-- Paletas *tinta* / *color*, zoom, exportación por diagrama (SVG, PNG 2×, copiar) y
+- **Themes** de `dibu`: *Tinta*, *Color*, *Contraste* y *Oscuro* desde la barra (los presets `ink`,
+  `color`, `high-contrast` y `dark`). Cada bloque puede elegir el suyo con `theme:`, sea un preset
+  o un objeto `{extends, colors, typography}`, y el asistente sugiere los presets.
+- Zoom, exportación por diagrama (SVG, PNG 2×, copiar) y
   "Exportar todo" (un único SVG apilado).
 - Catálogo de ejemplos (el *kitchen sink* de `dibu`) insertable por tipo.
 - Abrir y guardar archivos (también arrastrándolos a la ventana). El documento se guarda en
@@ -75,7 +78,7 @@ se toman de `$DIBU_DIR/fixtures/kitchen_sink/` (por defecto `../dibu`).
 
 ```
 wasm/            crate puente (cdylib, ABI C sin wasm-bindgen) sobre dibu-core/cs/control/chem/comp/math
-  src/lib.rs     dibu_types · dibu_render · dibu_render_md · dibu_stack · dibu_parse
+  src/lib.rs     dibu_types · dibu_themes · dibu_render(_theme) · dibu_render_md(_theme) · dibu_stack · dibu_parse
 web/
   index.html     plantilla (el build inserta estilos, datos y script)
   app.js         editor, resaltado, troceo en bloques, sincronización, exportación
