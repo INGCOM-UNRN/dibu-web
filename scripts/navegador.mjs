@@ -217,6 +217,13 @@ await tecla("Enter");
 const enter = await ev(`${$("#texto")}.value`);
 comprobar("Enter mantiene la sangría y completa la clave", enter.endsWith("\n  title: "), JSON.stringify(enter.slice(-14)));
 
+// 8. Theme oscuro desde la barra.
+await fijarTexto(JSON.stringify("- type: array\n  values: [1, 2]\n"));
+await ev(`${$("#b-oscuro")}.click()`);
+const oscuro = await hasta(`(${$(".tarjeta .lienzo img")}._svg || "").includes('fill="#0f172a"')`);
+comprobar("botón Oscuro aplica el theme dark", !!oscuro);
+await ev(`${$("#b-tinta")}.click()`);
+
 comprobar("sin excepciones de JavaScript", excepciones.length === 0, excepciones.slice(0, 3).join(" | "));
 console.log(fallas ? `✗ ${fallas} comprobación(es) fallida(s)` : "✓ prueba de navegador completa");
 terminar(fallas ? 1 : 0);

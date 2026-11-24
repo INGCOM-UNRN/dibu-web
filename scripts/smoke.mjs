@@ -67,4 +67,17 @@ const err = llamar("dibu_render", "- type: array\n  values: [1, 2\n", 1);
 console.log(err.error ? `✓ error YAML: ${err.error}` : "✗ se esperaba error YAML");
 const st = llamar("dibu_stack", JSON.stringify([llamar("dibu_render", "type: array\nvalues: [1]", 1).blocks[0].svg, llamar("dibu_render", "type: stack\nvalues: [1]", 1).blocks[0].svg]));
 console.log(st.svg ? "✓ apilado" : `✗ apilado: ${st.error}`);
+
+// Themes: preset, theme propio, theme por bloque y error de validación.
+const conTema = (texto, theme) => llamar("dibu_render_theme", JSON.stringify({ text: texto, theme }));
+const comprobar = (ok, msg) => { console.log(`${ok ? "✓" : "✗"} ${msg}`); if (!ok) fallas++; };
+const arr = "type: array\nvalues: [1, 2]";
+comprobar(llamar("dibu_themes").join() === "ink,color,high-contrast,dark", "theme: presets");
+comprobar(conTema(arr, "ink").blocks[0].svg === llamar("dibu_render", arr, 1).blocks[0].svg, "theme: ink idéntico a la paleta tinta");
+comprobar(conTema(arr, "dark").blocks[0].svg.includes('fill="#0f172a"'), "theme: dark pinta el fondo oscuro");
+comprobar(conTema(arr, { extends: "ink", colors: { background: "#fafaf9" } }).blocks[0].svg.includes('fill="#fafaf9"'), "theme: objeto con extends y colors");
+comprobar(conTema("type: array\nvalues: [1]\ntheme: dark", "ink").blocks[0].svg.includes('fill="#0f172a"'), "theme: el bloque pisa el theme global");
+comprobar(!!conTema(arr, { colors: { background: "red\" onload=\"x" } }).error, "theme: rechaza colores inválidos");
+const md = llamar("dibu_render_md_theme", JSON.stringify({ text: arr, theme: "high-contrast" }));
+comprobar(!!md.svg && md.name.startsWith("estructura-"), "theme: Markdown con theme");
 process.exit(fallas ? 1 : 0);
