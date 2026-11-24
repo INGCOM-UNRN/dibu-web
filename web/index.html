@@ -39,10 +39,34 @@
 
 <main id="panel">
   <section class="editor" aria-label="Editor">
-    <div class="gutter" aria-hidden="true"><div id="numeros"></div></div>
-    <div class="zona">
-      <pre id="resaltado" aria-hidden="true"></pre>
-      <textarea id="texto" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Fuente de los diagramas"></textarea>
+    <div class="pestanas" role="tablist">
+      <button id="t-codigo" role="tab" class="activo" aria-selected="true" title="Editar el texto YAML / JSON / Markdown (Ctrl+E alterna)">Código</button>
+      <button id="t-visual" role="tab" aria-selected="false" title="Editar el diagrama con formularios (Ctrl+E alterna)">Visual</button>
+    </div>
+    <div class="codigo">
+      <div class="gutter" aria-hidden="true"><div id="numeros"></div></div>
+      <div class="zona">
+        <pre id="resaltado" aria-hidden="true"></pre>
+        <textarea id="texto" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Fuente de los diagramas"></textarea>
+      </div>
+    </div>
+    <div id="visual" hidden>
+      <div class="v-barra">
+        <select id="v-nuevo" title="Agregar un diagrama nuevo (con valores de ejemplo)"></select>
+        <span class="segmentado">
+          <button id="v-arriba" title="Mover el bloque hacia arriba">↑</button>
+          <button id="v-abajo" title="Mover el bloque hacia abajo">↓</button>
+        </span>
+        <button id="v-duplicar" title="Duplicar el bloque">Duplicar</button>
+        <button id="v-eliminar" title="Eliminar el bloque">Eliminar</button>
+        <span class="flex"></span>
+        <span class="segmentado">
+          <button id="v-deshacer" title="Deshacer (Ctrl+Z)">↶</button>
+          <button id="v-rehacer" title="Rehacer (Ctrl+Shift+Z)">↷</button>
+        </span>
+      </div>
+      <ol id="v-lista" aria-label="Bloques del documento"></ol>
+      <div id="v-form"></div>
     </div>
   </section>
   <div id="divisor" role="separator" aria-orientation="vertical" tabindex="0" title="Arrastrar para redimensionar"></div>
@@ -77,6 +101,7 @@
       <li><b>YAML / JSON</b>: una lista de bloques (<code>- type: …</code>), un bloque suelto o <code>{blocks: [...]}</code>. Cada elemento de la lista se renderiza por separado.</li>
       <li><b>Markdown</b>: cada fence <code>```estructura</code> o <code>```statics</code> genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>.</li>
       <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>
+      <li><b>Visual</b> (<kbd>Ctrl</kbd>+<kbd>E</kbd>): editá el diagrama seleccionado con formularios. Los campos sugeridos salen de los ejemplos y del código del motor; arrastrá la etiqueta de un número para variarlo en vivo. Los cambios se escriben en el código al instante.</li>
       <li>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>O</kbd> abrir · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> renderizar ya · <kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd> indentar.</li>
     </ul>
     <h3>Tipos disponibles <small id="a-cuenta"></small></h3>

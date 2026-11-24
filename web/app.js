@@ -123,7 +123,7 @@ function trocear(texto, modo) {
       let j = i + 1;
       while (j < lineas.length && lineas[j].trimEnd() !== valla) j++;
       trozos.push({
-        ini: i, fin: Math.min(j + 1, lineas.length), cuerpoIni: i + 1,
+        ini: i, fin: Math.min(j + 1, lineas.length), cuerpoIni: i + 1, rIni: i + 1, rFin: j,
         texto: lineas.slice(i + 1, j).join("\n"),
         sinCerrar: j >= lineas.length,
       });
@@ -140,13 +140,13 @@ function trocear(texto, modo) {
     inicios.forEach((ini, k) => {
       let fin = k + 1 < inicios.length ? inicios[k + 1] : lineas.length;
       while (fin > ini + 1 && !significativa(lineas[fin - 1])) fin--;
-      trozos.push({ ini, fin, cuerpoIni: ini, texto: lineas.slice(ini, fin).join("\n") });
+      trozos.push({ ini, fin, cuerpoIni: ini, rIni: ini, rFin: fin, texto: lineas.slice(ini, fin).join("\n") });
     });
   } else {
     // Bloque único, JSON o {blocks: [...]}: se procesa entero.
     let fin = lineas.length;
     while (fin > primera + 1 && !significativa(lineas[fin - 1])) fin--;
-    trozos.push({ ini: primera, fin, cuerpoIni: 0, texto, entero: true });
+    trozos.push({ ini: primera, fin, cuerpoIni: 0, rIni: primera, rFin: fin, texto, entero: true });
   }
   return trozos;
 }
@@ -176,7 +176,7 @@ async function calcularTrozo(tr, modo) {
     const x = r.resultado;
     const e = x.error ? ajustarError(x.error, tr.cuerpoIni) : null;
     return {
-      items: [{ svg: x.svg, tipo: x.types.join(" + ") || "?", nombre: x.name, error: e && e.texto, linea: e && e.linea }],
+      items: [{ svg: x.svg, tipo: x.types.join(" + ") || "?", titulo: (x.titles || []).filter(Boolean).join(" · "), subtipos: x.types, subtitulos: x.titles, nombre: x.name, error: e && e.texto, linea: e && e.linea }],
       guardar: true,
     };
   }
@@ -189,7 +189,7 @@ async function calcularTrozo(tr, modo) {
   }
   if (!x.blocks.length) return { items: [{ error: "no hay bloques", linea: tr.ini }], guardar: true };
   return {
-    items: x.blocks.map((b) => ({ svg: b.svg, tipo: b.type || "?", id: b.id, error: b.error, linea: b.error ? tr.ini : null })),
+    items: x.blocks.map((b) => ({ svg: b.svg, tipo: b.type || "?", id: b.id, titulo: b.title, error: b.error, linea: b.error ? tr.ini : null })),
     guardar: true,
   };
 }
@@ -225,7 +225,8 @@ async function renderizar() {
     if (!tr.res) pendientes.push(i);
   });
   pintar();
-  actualizarCursor();
+  if (V.abierto) { estado.activo = V.sel.trozo; resaltarTodo(); sincronizarVisual(); }
+  else actualizarCursor();
 
   const t0 = performance.now();
   for (const i of pendientes) {
@@ -242,6 +243,7 @@ async function renderizar() {
   }
   if (pendientes.length) $("#e-tiempo").textContent = `render ${Math.round(performance.now() - t0)} ms`;
   marcarErroresEnEditor();
+  if (V.abierto) actualizarNavegador();
 }
 
 // ---------- tarjetas de la vista previa ----------
@@ -277,6 +279,7 @@ function crearTarjeta() {
   const el = document.createElement("article");
   el.className = "tarjeta";
   el.innerHTML = `<header><span class="num"></span><span class="tipo"></span><span class="ident"></span><span class="flex"></span>
+    <button data-acc="editar" title="Editar este diagrama con el editor visual">Editar</button>
     <button data-acc="copiar" title="Copiar el código SVG">Copiar</button>
     <button data-acc="svg" title="Descargar SVG">SVG</button>
     <button data-acc="png" title="Descargar PNG (2×)">PNG</button></header>
@@ -286,8 +289,10 @@ function crearTarjeta() {
     const d = estado.tarjetas[i];
     if (!d) return;
     const acc = e.target.closest("button")?.dataset.acc;
+    if (acc === "editar") { if (!V.abierto) abrirVisual(true); seleccionarVisual(d.trozo, d.sub || 0); return; }
     if (acc) { accionTarjeta(acc, d, i); return; }
-    irAlBloque(d.trozo, d.linea);
+    if (V.abierto) seleccionarVisual(d.trozo, d.sub || 0);
+    else irAlBloque(d.trozo, d.linea);
   });
   return el;
 }
@@ -300,6 +305,7 @@ function anchoSVG(svg) {
 function actualizarTarjeta(el, d, i) {
   const firma = `${d.trozo}|${d.cargando ? "…" : ""}|${d.svg ? d.svg.length + d.svg.slice(-64) + d.svg.slice(0, 400) : ""}|${d.error || ""}|${d.tipo}|${d.id || d.nombre || ""}`;
   el.dataset.trozo = d.trozo;
+  el.dataset.sub = d.sub || 0;
   if (el._firma === firma) return;
   el._firma = firma;
   el.querySelector(".num").textContent = `#${i + 1}`;
@@ -312,7 +318,7 @@ function actualizarTarjeta(el, d, i) {
   const img = lienzo.querySelector("img");
   el.classList.toggle("error", !!d.error);
   el.classList.toggle("viejo", false);
-  el.querySelectorAll("header button").forEach((b) => (b.disabled = !d.svg));
+  el.querySelectorAll("header button").forEach((b) => (b.disabled = !d.svg && b.dataset.acc !== "editar"));
   err.hidden = !d.error;
   err.textContent = !d.error ? "" : /en la línea \d+/.test(d.error) ? d.error
     : `Línea ${(d.linea ?? estado.trozos[d.trozo].ini) + 1}: ${d.error}`;
@@ -574,7 +580,7 @@ function activar(i, desplazar) {
 function resaltarActivo(desplazar) {
   let primera = null;
   for (const el of ui.tarjetas.children) {
-    const on = Number(el.dataset.trozo) === estado.activo;
+    const on = Number(el.dataset.trozo) === estado.activo && (!V.abierto || estado.modo === "md" || Number(el.dataset.sub) === V.sel.sub);
     el.classList.toggle("act", on);
     if (on && !primera) primera = el;
   }
@@ -624,7 +630,7 @@ function reemplazarSeleccion(ini, fin, texto, selIni, selFin) {
   // execCommand mantiene el historial de deshacer del navegador.
   if (!document.execCommand("insertText", false, texto)) {
     ui.texto.setRangeText(texto, ini, fin, "end");
-    alEditar();
+    alEditar({ retardo: 0 });
   }
   ui.texto.setSelectionRange(selIni, selFin ?? selIni);
 }
@@ -675,12 +681,16 @@ function atajosGlobales(ev) {
   if (k === "s") { ev.preventDefault(); guardarArchivo(); }
   else if (k === "o") { ev.preventDefault(); $("#archivo").click(); }
   else if (ev.key === "Enter") { ev.preventDefault(); programarRender(true); }
+  else if (k === "e") { ev.preventDefault(); abrirVisual(!V.abierto); }
 }
 
 let temporizadorGuardado;
-function alEditar() {
+function alEditar(op) {
   resaltarTodo();
-  programarRender(false);
+  if (op && typeof op.retardo === "number") {
+    clearTimeout(temporizadorRender);
+    temporizadorRender = setTimeout(renderizar, op.retardo);
+  } else programarRender(false);
   clearTimeout(temporizadorGuardado);
   temporizadorGuardado = setTimeout(() => {
     try { localStorage.setItem(CLAVE_TEXTO, ui.texto.value); } catch { /* cuota llena */ }
@@ -694,6 +704,9 @@ function cargarTexto(texto, nombre) {
   ui.texto.scrollTop = 0;
   if (nombre) estado.nombreArchivo = nombre;
   estado.activo = -1;
+  V.sel = { trozo: 0, sub: 0 };
+  V.raiz = null;
+  V.fuente = null;
   ultimoBueno.clear();
   alEditar();
   programarRender(true);
@@ -902,7 +915,7 @@ function configurarDivisor() {
 
 function conectarEventos() {
   const t = ui.texto;
-  t.addEventListener("input", alEditar);
+  t.addEventListener("input", () => alEditar());
   t.addEventListener("keydown", alTeclear);
   t.addEventListener("scroll", alDesplazarEditor);
   ["keyup", "click", "select", "focus"].forEach((ev) => t.addEventListener(ev, actualizarCursor));
@@ -967,6 +980,7 @@ function conectarEventos() {
 async function arrancar() {
   configurarDivisor();
   conectarEventos();
+  iniciarVisual();
   poblarEjemplos();
   aplicarPaleta();
   aplicarZoom();
@@ -983,6 +997,8 @@ async function arrancar() {
     estado.tipos = r.resultado;
     $("#e-motor").textContent = `Motor dibu (WebAssembly) · ${estado.tipos.length} tipos`;
     poblarAyuda();
+    poblarNuevoBloque();
+    if (prefs.vista === "visual") abrirVisual(true);
     programarRender(true);
   } catch (e) {
     $("#e-motor").textContent = "No se pudo iniciar el motor: " + e.message;
