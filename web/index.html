@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dibu · editor de diagramas</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232457c5'/%3E%3Cpath d='M7 23 L13 11 L19 19 L25 8' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>/*@ESTILO@*/</style>
+</head>
+<body>
+<header class="barra">
+  <div class="marca"><span class="logo" aria-hidden="true"></span><strong>dibu</strong><span class="sub">editor de diagramas</span></div>
+  <nav class="acciones" aria-label="Archivo">
+    <button id="b-nuevo" title="Documento nuevo">Nuevo</button>
+    <button id="b-abrir" title="Abrir archivo YAML, JSON o Markdown (Ctrl+O)">Abrir…</button>
+    <button id="b-guardar" title="Descargar el texto (Ctrl+S)">Guardar</button>
+    <input id="archivo" type="file" accept=".yaml,.yml,.json,.md,.markdown,.txt" hidden>
+    <span class="sep"></span>
+    <label class="campo">Insertar
+      <select id="s-ejemplo" title="Insertar un ejemplo al final del documento"><option value="">ejemplo…</option></select>
+    </label>
+    <label class="campo">Formato
+      <select id="s-modo" title="Cómo interpretar el texto">
+        <option value="auto">automático</option>
+        <option value="yaml">YAML / JSON</option>
+        <option value="md">Markdown (```estructura)</option>
+      </select>
+    </label>
+    <div class="segmentado" role="group" aria-label="Paleta">
+      <button id="b-tinta" data-paleta="tinta" title="Paleta ahorro de tinta (por defecto en dibu)">Tinta</button>
+      <button id="b-color" data-paleta="color" title="Paleta a color">Color</button>
+    </div>
+    <span class="sep"></span>
+    <button id="b-compartir" title="Copiar un enlace con el documento embebido">Compartir</button>
+    <button id="b-todo" title="Descargar todos los diagramas apilados en un único SVG">Exportar todo</button>
+    <button id="b-ayuda" class="icono" title="Ayuda y tipos disponibles" aria-label="Ayuda">?</button>
+  </nav>
+</header>
+
+<main id="panel">
+  <section class="editor" aria-label="Editor">
+    <div class="gutter" aria-hidden="true"><div id="numeros"></div></div>
+    <div class="zona">
+      <pre id="resaltado" aria-hidden="true"></pre>
+      <textarea id="texto" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Fuente de los diagramas"></textarea>
+    </div>
+  </section>
+  <div id="divisor" role="separator" aria-orientation="vertical" tabindex="0" title="Arrastrar para redimensionar"></div>
+  <section class="vista" aria-label="Vista previa">
+    <div class="vista-barra">
+      <span id="v-resumen">—</span>
+      <span class="flex"></span>
+      <label class="check" title="La vista previa sigue al cursor y al desplazamiento del editor"><input id="c-seguir" type="checkbox" checked> sincronizar</label>
+      <div class="segmentado zoom" role="group" aria-label="Zoom">
+        <button id="z-menos" title="Alejar">−</button>
+        <button id="z-valor" title="Ajustar al ancho / tamaño real">Ajustar</button>
+        <button id="z-mas" title="Acercar">+</button>
+      </div>
+    </div>
+    <div id="tarjetas"></div>
+  </section>
+</main>
+
+<footer class="estado">
+  <span id="e-motor">Cargando motor…</span>
+  <span id="e-bloques"></span>
+  <span class="flex"></span>
+  <span id="e-tiempo"></span>
+  <span id="e-cursor">Ln 1, Col 1</span>
+</footer>
+
+<dialog id="ayuda">
+  <form method="dialog" class="dlg">
+    <header><h2>dibu · editor de diagramas</h2><button class="icono" aria-label="Cerrar">✕</button></header>
+    <p>Escribí bloques YAML o JSON con un campo <code>type</code> y la vista previa se actualiza mientras escribís. Todo se procesa en tu navegador: el motor <code>dibu</code> está compilado a WebAssembly y no se envía nada a ningún servidor.</p>
+    <ul>
+      <li><b>YAML / JSON</b>: una lista de bloques (<code>- type: …</code>), un bloque suelto o <code>{blocks: [...]}</code>. Cada elemento de la lista se renderiza por separado.</li>
+      <li><b>Markdown</b>: cada fence <code>```estructura</code> o <code>```statics</code> genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>.</li>
+      <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>
+      <li>Atajos: <kbd>Ctrl</kbd>+<kbd>S</kbd> guardar · <kbd>Ctrl</kbd>+<kbd>O</kbd> abrir · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> renderizar ya · <kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd> indentar.</li>
+    </ul>
+    <h3>Tipos disponibles <small id="a-cuenta"></small></h3>
+    <p class="nota">Clic en un tipo para insertar un ejemplo.</p>
+    <div id="a-tipos"></div>
+  </form>
+</dialog>
+
+<div id="aviso" role="status" aria-live="polite"></div>
+
+<script>/*@DATOS@*/</script>
+<script>/*@APP@*/</script>
+</body>
+</html>
