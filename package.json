@@ -8,6 +8,6 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:web": "node scripts/build.mjs --sin-cargo",
-    "test": "node scripts/smoke.mjs"
+    "test": "node scripts/smoke.mjs && node scripts/yaml-roundtrip.mjs"
   }
 }
