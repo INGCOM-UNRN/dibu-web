@@ -1,0 +1,25 @@
+[package]
+name = "dibu-wasm"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+# El motor vive en el repositorio hermano `dibu` (../dibu).
+[dependencies]
+dibu-core = { path = "../../dibu/crates/dibu-core" }
+dibu-cs = { path = "../../dibu/crates/dibu-cs" }
+dibu-control = { path = "../../dibu/crates/dibu-control" }
+dibu-chem = { path = "../../dibu/crates/dibu-chem" }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
