@@ -8,7 +8,7 @@ import vm from "node:vm";
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dibu = resolve(process.env.DIBU_DIR || join(raiz, "..", "dibu"));
-const ex = new WebAssembly.Instance(new WebAssembly.Module(readFileSync(join(raiz, "wasm/target/wasm32-unknown-unknown/release/dibu_wasm.wasm"))), {}).exports;
+const ex = new WebAssembly.Instance(new WebAssembly.Module(readFileSync(join(raiz, "dist/dibu.wasm"))), {}).exports;
 function llamar(op, t, f) {
   const b = new TextEncoder().encode(t);
   const p = ex.dibu_alloc(b.length);

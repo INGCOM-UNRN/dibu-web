@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dibu = resolve(process.env.DIBU_DIR || join(raiz, "..", "dibu"));
-const wasm = readFileSync(join(raiz, "wasm/target/wasm32-unknown-unknown/release/dibu_wasm.wasm"));
+const wasm = readFileSync(join(raiz, "dist/dibu.wasm"));
 const ex = new WebAssembly.Instance(new WebAssembly.Module(wasm), {}).exports;
 const enc = new TextEncoder(), dec = new TextDecoder();
 function llamar(op, texto, bandera) {

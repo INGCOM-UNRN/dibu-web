@@ -60,7 +60,7 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
 ## Construir
 
 Requisitos: Rust con el target `wasm32-unknown-unknown` y Node ≥ 18. El repositorio `dibu`
-tiene que estar al lado (`../dibu`), porque el crate puente lo usa por ruta.
+tiene que estar al lado (`../dibu`): el motor es su crate `dibu-wasm`.
 
 ```bash
 # Fedora: sudo dnf install rust-std-static-wasm32-unknown-unknown
@@ -77,8 +77,6 @@ se toman de `$DIBU_DIR/fixtures/kitchen_sink/` (por defecto `../dibu`).
 ## Estructura
 
 ```
-wasm/            crate puente (cdylib, ABI C sin wasm-bindgen) sobre dibu-core/cs/control/chem/comp/math
-  src/lib.rs     dibu_types · dibu_themes · dibu_render(_theme) · dibu_render_md(_theme) · dibu_stack · dibu_parse
 web/
   index.html     plantilla (el build inserta estilos, datos y script)
   app.js         editor, resaltado, troceo en bloques, sincronización, exportación
@@ -108,7 +106,7 @@ la prueba de navegador.
 - `release.yml`: al empujar un tag `vX.Y.Z` igual a la versión de `package.json`, adjunta al
   release el HTML autocontenido `dibu-web-vX.Y.Z.html`.
 - `mantenimiento.yml`: los lunes compila contra `dibu` `main`, para detectar enseguida
-  cambios del motor que rompan el editor, y audita `wasm/Cargo.lock` con `cargo audit`.
+  cambios del motor que rompan el editor.
 
 El editor publicado está en <https://ingcom-unrn.github.io/dibu-web/>.
 

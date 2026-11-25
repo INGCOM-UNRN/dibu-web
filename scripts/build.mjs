@@ -15,11 +15,14 @@ const dibu = resolve(process.env.DIBU_DIR || join(raiz, "..", "dibu"));
 const web = join(raiz, "web");
 const dist = join(raiz, "dist");
 const objetivo = "wasm32-unknown-unknown";
-const wasmRuta = join(raiz, "wasm", "target", objetivo, "release", "dibu_wasm.wasm");
+// El motor (crate dibu-wasm) vive en dibu; se compila con su propio directorio target.
+const destino = join(dibu, "target");
+const wasmRuta = join(destino, objetivo, "wasm", "dibu_wasm.wasm");
 
 if (!process.argv.includes("--sin-cargo")) {
   console.log("· compilando motor dibu → WebAssembly");
-  execFileSync("cargo", ["build", "--release", "--target", objetivo, "--manifest-path", join(raiz, "wasm", "Cargo.toml")], {
+  const args = ["build", "--profile", "wasm", "-p", "dibu-wasm", "--target", objetivo];
+  execFileSync("cargo", [...args, "--manifest-path", join(dibu, "Cargo.toml"), "--target-dir", destino], {
     stdio: "inherit",
   });
 }
@@ -39,6 +42,9 @@ try {
 } catch {
   /* sin wasm-opt */
 }
+
+mkdirSync(dist, { recursive: true });
+writeFileSync(join(dist, "dibu.wasm"), wasm); // lo usan las pruebas (smoke, yaml-roundtrip)
 
 const leer = (p) => readFileSync(p, "utf8");
 

@@ -1,5 +1,5 @@
-# Las dependencias Rust del puente WASM apuntan a dibu por ruta (../../dibu), que Dependabot
-# no puede resolver; se actualizan a mano (cargo update en wasm/). Aquí sólo las Actions.
+# El motor WASM es el crate dibu-wasm del repositorio dibu, que tiene su propio Dependabot.
+# Aquí sólo las Actions.
 version: 2
 updates:
   - package-ecosystem: github-actions
