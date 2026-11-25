@@ -8,7 +8,7 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
 
 ## Funciones
 
-- Soporta los 70 tipos de `dibu` (control de procesos, química, estructuras de datos, sistemas
+- Soporta los 71 tipos de `dibu` (control de procesos, química, estructuras de datos, sistemas
   digitales, arquitectura, sistemas operativos, redes, bases de datos, señales, probabilidad y
   circuitos). Usa el mismo motor que la CLI, así que la salida es la misma.
 - Formatos: YAML/JSON (lista de bloques, bloque suelto o `{blocks: [...]}`) y **Markdown** con
