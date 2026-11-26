@@ -227,11 +227,14 @@ export function construirEsquema(fixtures, fuente) {
         }
       }
     }
-    // Un campo anidado (`disturbance[].from`) toma los valores del `match` sobre su clave.
+    // Un campo anidado (`disturbance[].from`) toma los valores del `match` sobre su clave, y
+    // también uno de primer nivel que el código no lee del bloque con un nombre conocido (el
+    // `sign` de un lazo de `block_diagram`): si lo lee del bloque, un `match` de otro tipo del
+    // mismo archivo no le corresponde.
     for (const [ruta, c] of Object.entries(campos)) {
-      const k = /[.\]]([A-Za-z0-9_]+)$/.exec(ruta)?.[1];
+      const k = /(?:^|[.\]])([A-Za-z0-9_]+)$/.exec(ruta)?.[1];
       const a = k && (s.anidados || {})[k];
-      if (!a || c.en) continue;
+      if (!a || c.en || (ruta === k && s.claves.includes(k))) continue;
       c.en = a.en;
       if (a.def !== undefined && c.def === undefined) c.def = a.def;
     }

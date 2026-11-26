@@ -86,6 +86,21 @@ caso("Markdown segundo fence", "```estructura\n- type: a\n```\n\n```estructura\n
   if (!ok) fallas++;
   console.log(`${ok ? "✓" : "✗"} valores de un campo anidado${ok ? "" : ` ${JSON.stringify(r)}`}`);
 }
+{
+  const { enumsAnidados } = await import("./esquema.mjs");
+  // `None` en un brazo propio: valores admitidos sin valor por defecto.
+  const src = `match obj.get("sign").filter(|v| !v.is_null()).map(valor_str).as_deref() {
+        None => Ok(defecto.to_string()),
+        Some("+") => Ok("+".to_string()),
+        Some("-") => Ok("-".to_string()),
+        Some(_) => Err(e),
+    }`;
+  total++;
+  const r = enumsAnidados(src);
+  const ok = JSON.stringify(r) === JSON.stringify({ sign: { en: ["+", "-"] } });
+  if (!ok) fallas++;
+  console.log(`${ok ? "✓" : "✗"} valores sin valor por defecto${ok ? "" : ` ${JSON.stringify(r)}`}`);
+}
 
 console.log(`${fallas ? "✗" : "✓"} asistente: ${total - fallas}/${total}`);
 process.exit(fallas ? 1 : 0);

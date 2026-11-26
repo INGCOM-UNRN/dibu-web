@@ -51,7 +51,8 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   (`scripts/esquema.mjs`) a partir de dos fuentes: los fixtures de dibu, parseados con el propio
   motor (tipos de valor, ejemplos y estructura anidada), y el código Rust de los renderizadores
   (claves leídas, valores de `matches!`/`match` y valores por defecto de `unwrap_or`). Los
-  campos anidados, como `disturbance[].from`, toman los valores de los `match` sobre su clave, y
+  campos anidados, como `disturbance[].from`, toman los valores de los `match` sobre su clave (lo
+  mismo un campo de primer nivel que el renderizador no lee directamente del bloque), y
   un campo que acepta un objeto o una lista comparte las subclaves de las dos formas.
 - **Themes** de `dibu`: *Tinta*, *Color*, *Contraste* y *Oscuro* desde la barra (los presets `ink`,
   `color`, `high-contrast` y `dark`). Cada bloque puede elegir el suyo con `theme:`, sea un preset
