@@ -71,5 +71,21 @@ caso("Markdown dentro del fence", "# Título\n\n```estructura\n- type: lewis\n  
 caso("Markdown fuera del fence", "Texto ‸\n```estructura\n- type: lewis\n```", null, "md");
 caso("Markdown segundo fence", "```estructura\n- type: a\n```\n\n```estructura\ntype: queue\nti‸\n```", { modo: "clave", tipo: "queue" }, "md");
 
+// Valores de un campo anidado, desde un `match` sobre `.get("clave")` del renderizador.
+{
+  const { enumsAnidados } = await import("./esquema.mjs");
+  const src = `let lado = match obj.get("from").filter(|v| !v.is_null()).map(valor_str).as_deref() {
+        None if camino == Camino::Realimentacion => Lado::Abajo,
+        None | Some("top") => Lado::Arriba,
+        Some("bottom") => Lado::Abajo,
+        Some(otro) => return Err(e),
+    };`;
+  total++;
+  const r = enumsAnidados(src);
+  const ok = JSON.stringify(r) === JSON.stringify({ from: { en: ["top", "bottom"], def: "top" } });
+  if (!ok) fallas++;
+  console.log(`${ok ? "✓" : "✗"} valores de un campo anidado${ok ? "" : ` ${JSON.stringify(r)}`}`);
+}
+
 console.log(`${fallas ? "✗" : "✓"} asistente: ${total - fallas}/${total}`);
 process.exit(fallas ? 1 : 0);
