@@ -5,7 +5,8 @@
 // Markdown y editor visual.
 //
 // Uso: node scripts/navegador.mjs [ruta/al/index.html]
-//   CHROME_BIN  ejecutable de Chrome/Chromium (por defecto se busca en el PATH).
+//   CHROME_BIN     ejecutable de Chrome/Chromium (por defecto se busca en el PATH).
+//   PDF_IMPRESION  si se define, guarda ahí el PDF de la vista de impresión de un documento Markdown.
 import { spawn, execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -128,6 +129,31 @@ comprobar("catálogo sin errores", okCat === totCat && totCat > 40, `${okCat}/${
 await elegir("@md");
 const ident = await hasta(`/estructura-[0-9a-f]+/.test(${$(".tarjeta .ident")}?.textContent) && ${$(".tarjeta .ident")}.textContent`, 30000);
 comprobar("Markdown con nombres de sync-md", !!ident, ident || "");
+
+// 5b. Documento: con «texto», el Markdown se ve entre los diagramas; la vista de impresión deja sólo eso.
+await fijarTexto(JSON.stringify("# Título del apunte\n\nUn párrafo con **negrita** y <script>x</script>.\n\n```estructura\n- type: array\n  values: [1, 2]\n```\n\n- uno\n- dos\n"));
+await hasta(`${$(".tarjeta .lienzo img")}?.src`);
+comprobar("los controles de Markdown se ven", await ev(`getComputedStyle(${$("#c-texto")}.closest('label')).display !== 'none'`));
+await ev(`(() => { const c = ${$("#c-texto")}; c.checked = true; c.dispatchEvent(new Event('change')); })()`);
+const doc = await hasta(`!${$("#documento")}.hidden && ${$("#documento h1")}?.textContent === 'Título del apunte' && ${$("#documento figure img")} && ${$("#documento")}.innerHTML`);
+comprobar("documento con texto y diagrama", !!doc && doc.includes("<strong>negrita</strong>") && doc.includes("<li>dos</li>"));
+comprobar("el HTML del texto se escapa", !!doc && !doc.includes("<script>") && doc.includes("&lt;script&gt;"));
+await ev(`${$("#b-impresion")}.click()`);
+const imp = await hasta(`document.body.classList.contains('impresion') && getComputedStyle(${$(".editor")}).display === 'none' && getComputedStyle(${$("#impresion-barra")}).display === 'flex'`);
+comprobar("vista de impresión sin el editor", !!imp);
+await cmd("Emulation.setEmulatedMedia", { media: "print" });
+const impreso = await ev(`[getComputedStyle(${$("#impresion-barra")}).display, getComputedStyle(${$("#documento figure")}).breakInside]`);
+comprobar("al imprimir sólo queda el documento", impreso[0] === "none" && impreso[1] === "avoid", impreso.join(" · "));
+await cmd("Emulation.setEmulatedMedia", { media: "" });
+comprobar("el documento terminó de dibujarse", !!(await hasta(`!document.querySelector('#documento figure.cargando') && !!${$("#documento figure img")}`)));
+if (process.env.PDF_IMPRESION) {
+  // Para revisar a ojo cómo sale el PDF: PDF_IMPRESION=salida.pdf npm run test:navegador
+  const { data } = await cmd("Page.printToPDF", { printBackground: true }).then((r) => r.result);
+  (await import("node:fs")).writeFileSync(process.env.PDF_IMPRESION, Buffer.from(data, "base64"));
+}
+await ev(`${$("#i-salir")}.click()`);
+comprobar("Salir vuelve al editor", await hasta(`!document.body.classList.contains('impresion')`));
+await ev(`(() => { const c = ${$("#c-texto")}; c.checked = false; c.dispatchEvent(new Event('change')); })()`);
 
 // 6. Editor visual: editar el título desde el formulario actualiza código y SVG.
 await fijarTexto(JSON.stringify("- type: array\n  title: Antes\n  values: [1, 2]\n"));
