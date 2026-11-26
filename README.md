@@ -8,12 +8,18 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
 
 ## Funciones
 
-- Soporta los 71 tipos de `dibu` (control de procesos, química, estructuras de datos, sistemas
+- Soporta los 72 tipos de `dibu` (control de procesos, química, estructuras de datos, sistemas
   digitales, arquitectura, sistemas operativos, redes, bases de datos, señales, probabilidad y
   circuitos). Usa el mismo motor que la CLI, así que la salida es la misma.
 - Formatos: YAML/JSON (lista de bloques, bloque suelto o `{blocks: [...]}`) y **Markdown** con
   fences ` ```estructura ` / ` ```statics ` / `~~~…`. En Markdown, cada fence genera el SVG
   apilado con el mismo nombre `estructura-<hash>.svg` que produce `dibu sync-md`.
+- **Documento e impresión** (en Markdown): con *texto*, la vista previa muestra el documento
+  entero, con el resto del Markdown (títulos, párrafos, listas, tablas, código, citas) entre los
+  diagramas. *Imprimir…* abre una vista de impresión a pantalla completa, sin el editor, para
+  imprimir o guardar como PDF desde el diálogo del navegador: los diagramas y los títulos no se
+  cortan entre páginas. <kbd>Esc</kbd> o *Salir* vuelve al editor. El HTML que traiga el texto
+  se muestra escapado, nunca se ejecuta.
 - **Sincronización editor ↔ vista previa**: el bloque bajo el cursor resalta su diagrama. Al
   desplazar el editor, la vista previa lo acompaña. Un clic en un diagrama lleva a su bloque.
 - Cada bloque se renderiza por separado y se guarda en caché. Un error afecta solo a su bloque,
@@ -79,7 +85,8 @@ se toman de `$DIBU_DIR/fixtures/kitchen_sink/` (por defecto `../dibu`).
 ```
 web/
   index.html     plantilla (el build inserta estilos, datos y script)
-  app.js         editor, resaltado, troceo en bloques, sincronización, exportación
+  app.js         editor, resaltado, troceo en bloques, sincronización, exportación, documento e impresión
+  markdown.js    Markdown mínimo y seguro para el texto de la vista de documento
   visual.js      editor visual: inspector de formularios y serializador YAML/JSON
   asistente.js   autocompletado, ayuda del campo y operaciones de línea del editor de código
   worker.js      Web Worker que instancia el WASM

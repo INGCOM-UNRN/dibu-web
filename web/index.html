@@ -76,6 +76,8 @@
     <div class="vista-barra">
       <span id="v-resumen">—</span>
       <span class="flex"></span>
+      <label class="check solo-md" title="Markdown: mostrar el resto del texto del documento entre los diagramas"><input id="c-texto" type="checkbox"> texto</label>
+      <button id="b-impresion" class="solo-md" title="Markdown: vista de impresión a pantalla completa, para imprimir o guardar como PDF">Imprimir…</button>
       <label class="check" title="La vista previa sigue al cursor y al desplazamiento del editor"><input id="c-seguir" type="checkbox" checked> sincronizar</label>
       <div class="segmentado zoom" role="group" aria-label="Zoom">
         <button id="z-menos" title="Alejar">−</button>
@@ -84,6 +86,7 @@
       </div>
     </div>
     <div id="tarjetas"></div>
+    <article id="documento" hidden aria-label="Documento"></article>
   </section>
 </main>
 
@@ -102,7 +105,8 @@
     <p>Escribí bloques YAML o JSON con un campo <code>type</code> y la vista previa se actualiza mientras escribís. Todo se procesa en tu navegador: el motor <code>dibu</code> está compilado a WebAssembly y no se envía nada a ningún servidor.</p>
     <ul>
       <li><b>YAML / JSON</b>: una lista de bloques (<code>- type: …</code>), un bloque suelto o <code>{blocks: [...]}</code>. Cada elemento de la lista se renderiza por separado.</li>
-      <li><b>Markdown</b>: cada fence <code>```estructura</code> o <code>```statics</code> genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>.</li>
+      <li><b>Markdown</b>: cada fence <code>```estructura</code> o <code>```statics</code> genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>. Con <b>texto</b>, la vista previa muestra el documento entero: el resto del Markdown entre los diagramas.</li>
+      <li><b>Imprimir…</b> (en Markdown): una vista de impresión a pantalla completa, sin el editor, con el documento listo para imprimir o guardar como PDF desde el diálogo del navegador. <kbd>Esc</kbd> vuelve al editor.</li>
       <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>
       <li><b>Themes</b>: los botones Tinta, Color, Contraste y Oscuro eligen el theme de todos los diagramas (lo mismo que <code>dibu --theme</code>). Un bloque puede elegir el suyo con <code>theme: dark</code> o con un objeto <code>{extends, colors, typography}</code>; se exporta tal como se ve.</li>
       <li><b>Visual</b> (<kbd>Ctrl</kbd>+<kbd>E</kbd>): editá el diagrama seleccionado con formularios. Los campos sugeridos salen de los ejemplos y del código del motor; arrastrá la etiqueta de un número para variarlo en vivo. Los cambios se escriben en el código al instante.</li>
@@ -115,6 +119,12 @@
     <div id="a-tipos"></div>
   </form>
 </dialog>
+
+<div id="impresion-barra" role="toolbar" aria-label="Vista de impresión">
+  <label class="check" title="Mostrar el texto del documento entre los diagramas"><input id="i-texto" type="checkbox"> texto</label>
+  <button id="i-imprimir" class="primario" title="Imprimir o guardar como PDF (Ctrl+P)">Imprimir / PDF</button>
+  <button id="i-salir" title="Volver al editor (Esc)">Salir</button>
+</div>
 
 <div id="aviso" role="status" aria-live="polite"></div>
 

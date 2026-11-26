@@ -18,10 +18,11 @@ const ui = {
   ejemplo: $("#s-ejemplo"),
   seguir: $("#c-seguir"),
   zoom: $("#z-valor"),
+  documento: $("#documento"),
 };
 
 const prefs = Object.assign(
-  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46 },
+  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false },
   leerJSON(localStorage.getItem(CLAVE_PREFS)) || {}
 );
 
@@ -221,6 +222,8 @@ async function renderizar() {
   estado.modo = modo;
   if (cambioModo) resaltarTodo();
   ui.modo.title = `Interpretando como ${modo === "md" ? "Markdown" : "YAML / JSON"}`;
+  document.body.classList.toggle("modo-md", modo === "md");
+  if (modo !== "md" && document.body.classList.contains("impresion")) vistaImpresion(false);
 
   // Primera pasada: lo que ya está en caché se muestra al instante.
   const pendientes = [];
@@ -264,6 +267,7 @@ function pintar() {
     tr.res.items.forEach((it, k) => lista.push({ ...it, trozo: ti, sub: k, multi: tr.res.items.length > 1 }));
   });
   estado.tarjetas = lista;
+  pintarDocumento();
 
   const cont = ui.tarjetas;
   if (!lista.length) {
@@ -278,6 +282,63 @@ function pintar() {
   lista.forEach((d, i) => actualizarTarjeta(cont.children[i], d, i));
   resaltarActivo(false);
   resumen();
+}
+
+// ---------- vista de documento (Markdown con su texto) ----------
+/** En Markdown con «texto», la vista previa es el documento: el texto entre los diagramas. */
+function enDocumento() {
+  return estado.modo === "md" && prefs.texto;
+}
+
+const urlsDocumento = new Map(); // svg -> object URL, reutilizadas entre repintadas
+function urlDe(svg) {
+  let u = urlsDocumento.get(svg);
+  if (!u) {
+    u = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    urlsDocumento.set(svg, u);
+    if (urlsDocumento.size > 300) {
+      const [viejo, url] = urlsDocumento.entries().next().value;
+      URL.revokeObjectURL(url);
+      urlsDocumento.delete(viejo);
+    }
+  }
+  return u;
+}
+
+function pintarDocumento() {
+  const doc = enDocumento();
+  ui.tarjetas.hidden = doc;
+  ui.documento.hidden = !doc;
+  if (!doc) return;
+  const lineas = ui.texto.value.split("\n");
+  const partes = [];
+  let desde = 0;
+  const prosa = (a, b) => {
+    const md = lineas.slice(a, b).join("\n");
+    if (md.trim()) partes.push(`<section class="prosa" data-linea="${a}">${MD.html(md)}</section>`);
+  };
+  estado.trozos.forEach((tr, ti) => {
+    prosa(desde, tr.ini);
+    desde = tr.fin;
+    if (!tr.res) {
+      partes.push(`<figure class="diagrama cargando" data-trozo="${ti}">…</figure>`);
+      return;
+    }
+    tr.res.items.forEach((it, k) => {
+      const svg = it.svg || (it.error ? null : ultimoBueno.get(ti));
+      const figura = svg
+        ? `<img alt="${esc(`Diagrama ${it.tipo || ""}`)}" src="${urlDe(svg)}" data-ancho="${anchoSVG(svg)}">`
+        : "";
+      const error = it.error ? `<pre class="msg-error">${esc(/en la línea \d+/.test(it.error) ? it.error : `Línea ${(it.linea ?? tr.ini) + 1}: ${it.error}`)}</pre>` : "";
+      partes.push(`<figure class="diagrama${it.error ? " error" : ""}" data-trozo="${ti}" data-sub="${k}">${figura}${error}</figure>`);
+    });
+  });
+  prosa(desde, lineas.length);
+  const html = partes.join("\n") || `<div class="vacio">El documento está vacío.</div>`;
+  if (ui.documento._html !== html) {
+    ui.documento._html = html;
+    ui.documento.innerHTML = html;
+  }
 }
 
 function crearTarjeta() {
@@ -672,6 +733,7 @@ function alTeclear(ev) {
 }
 
 function atajosGlobales(ev) {
+  if (ev.key === "Escape" && document.body.classList.contains("impresion")) { ev.preventDefault(); vistaImpresion(false); return; }
   const mod = ev.ctrlKey || ev.metaKey;
   if (!mod) return;
   const k = ev.key.toLowerCase();
@@ -957,6 +1019,31 @@ function conectarEventos() {
     const [si, ii] = v.split(":").map(Number);
     insertarEjemplo(catalogo[si].items[ii]);
   };
+  const texto = [$("#c-texto"), $("#i-texto")];
+  const ponerTexto = (v) => {
+    prefs.texto = v;
+    texto.forEach((c) => (c.checked = v));
+    guardarPrefs();
+    pintar();
+  };
+  texto.forEach((c) => { c.checked = prefs.texto; c.onchange = () => ponerTexto(c.checked); });
+  $("#b-impresion").onclick = () => vistaImpresion(true);
+  $("#i-imprimir").onclick = async () => {
+    // Si quedan diagramas por dibujar, se esperan (hasta 10 s) para que el PDF salga completo.
+    for (let k = 0; k < 100 && document.querySelector("#documento figure.cargando, .lienzo.cargando"); k++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    window.print();
+  };
+  $("#i-salir").onclick = () => vistaImpresion(false);
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && document.body.classList.contains("impresion")) vistaImpresion(false);
+  });
+  ui.documento.addEventListener("click", (e) => {
+    if (e.target.closest("a")) return;
+    const fig = e.target.closest("figure[data-trozo]");
+    if (fig && !document.body.classList.contains("impresion")) irAlBloque(Number(fig.dataset.trozo), null);
+  });
   $("#z-mas").onclick = () => cambiarZoom(1);
   $("#z-menos").onclick = () => cambiarZoom(-1);
   ui.zoom.onclick = () => { prefs.zoom = prefs.zoom ? 0 : 1; aplicarZoom(); };
@@ -976,6 +1063,23 @@ function conectarEventos() {
     const t = await leerHash();
     if (t !== null && t !== ui.texto.value) cargarTexto(t);
   });
+}
+
+/** La vista de impresión: sólo el documento, a pantalla completa; Esc (o Salir) vuelve. */
+function vistaImpresion(on) {
+  const b = document.body;
+  if (on === b.classList.contains("impresion")) return;
+  b.classList.toggle("impresion", on);
+  if (on) {
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => { /* sin pantalla completa: la vista sirve igual */ });
+    }
+    $("#i-imprimir").focus();
+  } else {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    ui.texto.focus();
+  }
+  pintar();
 }
 
 async function arrancar() {
