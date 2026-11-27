@@ -110,7 +110,7 @@
       <li><b>YAML / JSON</b>: una lista de bloques (<code>- type: …</code>), un bloque suelto o <code>{blocks: [...]}</code>. Cada elemento de la lista se renderiza por separado.</li>
       <li><b>Markdown</b>: cada fence <code>```dibu</code> (o <code>```estructura</code>, <code>```statics</code>) genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>. Con <b>texto</b>, la vista previa muestra el documento entero: el resto del Markdown entre los diagramas.</li>
       <li><b>PlantUML</b>: en Markdown, los fences <code>```plantuml</code> o <code>```puml</code> se dibujan con PlantUML compilado a JavaScript (TeaVM), también dentro del navegador. Sin <code>@startuml</code> el bloque se envuelve solo, y las opciones de alucarD (<code>// [ancho, 60%]</code>) se ignoran. Un archivo <code>.puml</code> se abre como PlantUML: un diagrama por cada <code>@start…</code>/<code>@end…</code>. El theme Oscuro usa el modo oscuro de PlantUML; el motor se carga con el primer diagrama.</li>
-      <li><b>Imprimir…</b> (en Markdown): una vista de impresión a pantalla completa, sin el editor, con el documento listo para imprimir o guardar como PDF desde el diálogo del navegador. <kbd>Esc</kbd> vuelve al editor.</li>
+      <li><b>Imprimir…</b> (en Markdown): una vista de impresión a pantalla completa, sin el editor, con el documento listo para imprimir o guardar como PDF desde el diálogo del navegador. «Encabezado y pie…» define el texto de arriba y de abajo de cada página, con el título, la fecha y el número de página. <kbd>Esc</kbd> vuelve al editor.</li>
       <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>
       <li><b>Themes</b>: los botones Tinta, Color, Contraste y Oscuro eligen el theme de todos los diagramas (lo mismo que <code>dibu --theme</code>). Un bloque puede elegir el suyo con <code>theme: dark</code> o con un objeto <code>{extends, colors, typography}</code>; se exporta tal como se ve.</li>
       <li><b>Visual</b> (<kbd>Ctrl</kbd>+<kbd>E</kbd>): editá el diagrama seleccionado con formularios. Los campos sugeridos salen de los ejemplos y del código del motor; arrastrá la etiqueta de un número para variarlo en vivo. Los cambios se escriben en el código al instante. Un bloque PlantUML se edita en una caja de texto, con la línea del error de sintaxis marcada.</li>
@@ -126,9 +126,25 @@
 
 <div id="impresion-barra" role="toolbar" aria-label="Vista de impresión">
   <label class="check" title="Mostrar el texto del documento entre los diagramas"><input id="i-texto" type="checkbox"> texto</label>
+  <button id="i-pagina" aria-expanded="false" aria-controls="i-panel" title="Configurar el encabezado y el pie de cada página">Encabezado y pie…</button>
   <button id="i-imprimir" class="primario" title="Imprimir o guardar como PDF (Ctrl+P)">Imprimir / PDF</button>
   <button id="i-salir" title="Volver al editor (Esc)">Salir</button>
 </div>
+<form id="i-panel" hidden aria-label="Encabezado y pie de página">
+  <div class="i-grilla">
+    <span></span><b>Izquierda</b><b>Centro</b><b>Derecha</b>
+    <b>Encabezado</b>
+    <input data-pagina="encabezado.izquierda" aria-label="Encabezado, izquierda">
+    <input data-pagina="encabezado.centro" aria-label="Encabezado, centro">
+    <input data-pagina="encabezado.derecha" aria-label="Encabezado, derecha">
+    <b>Pie</b>
+    <input data-pagina="pie.izquierda" aria-label="Pie, izquierda">
+    <input data-pagina="pie.centro" aria-label="Pie, centro">
+    <input data-pagina="pie.derecha" aria-label="Pie, derecha">
+  </div>
+  <p class="nota">Se reemplazan <code>{titulo}</code> (el primer <code>#</code> o el <code>title:</code> del front matter), <code>{archivo}</code>, <code>{fecha}</code>, <code>{pagina}</code> y <code>{paginas}</code>. Para que no se superpongan, desactivá «Encabezados y pies de página» en el diálogo de impresión del navegador. Necesita Chrome/Edge 131 o posterior.</p>
+  <p class="i-acciones"><button type="button" id="i-pagina-defecto">Valores por defecto</button></p>
+</form>
 
 <div id="aviso" role="status" aria-live="polite"></div>
 

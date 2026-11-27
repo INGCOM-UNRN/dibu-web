@@ -834,7 +834,12 @@ function alTeclear(ev) {
 }
 
 function atajosGlobales(ev) {
-  if (ev.key === "Escape" && document.body.classList.contains("impresion")) { ev.preventDefault(); vistaImpresion(false); return; }
+  if (ev.key === "Escape" && document.body.classList.contains("impresion")) {
+    ev.preventDefault();
+    if (!$("#i-panel").hidden) { $("#i-panel").hidden = true; $("#i-pagina").setAttribute("aria-expanded", "false"); $("#i-pagina").focus(); }
+    else vistaImpresion(false);
+    return;
+  }
   if (ev.altKey && !ev.ctrlKey && !ev.metaKey && ev.code === "KeyZ") { ev.preventDefault(); alternarAjuste(); return; }
   const mod = ev.ctrlKey || ev.metaKey;
   if (!mod) return;
@@ -1189,6 +1194,7 @@ function conectarEventos() {
     window.print();
   };
   $("#i-salir").onclick = () => vistaImpresion(false);
+  conectarPagina();
   document.addEventListener("fullscreenchange", () => {
     if (!document.fullscreenElement && document.body.classList.contains("impresion")) vistaImpresion(false);
   });
@@ -1218,12 +1224,106 @@ function conectarEventos() {
   });
 }
 
+// ---------- encabezado y pie de página (márgenes de @page) ----------
+const PAGINA_DEFECTO = {
+  encabezado: { izquierda: "", centro: "{titulo}", derecha: "" },
+  pie: { izquierda: "{fecha}", centro: "", derecha: "Página {pagina} de {paginas}" },
+};
+function configPagina() {
+  const p = prefs.pagina || {};
+  return {
+    encabezado: { ...PAGINA_DEFECTO.encabezado, ...(p.encabezado || {}) },
+    pie: { ...PAGINA_DEFECTO.pie, ...(p.pie || {}) },
+  };
+}
+
+/** El título del documento: `title:` del front matter o el primer encabezado `#`. */
+function tituloDocumento(texto) {
+  const fm = /^---\n([\s\S]*?)\n---/.exec(texto);
+  const t = fm && /^title:\s*["']?(.*?)["']?\s*$/m.exec(fm[1]);
+  if (t && t[1]) return t[1];
+  const h = /^#\s+(.+?)\s*#*\s*$/m.exec(texto.replace(/^```[\s\S]*?^```/gm, ""));
+  return h ? h[1] : "";
+}
+
+/** Una plantilla ("Página {pagina} de {paginas}") como valor de `content` de CSS. */
+function contenidoCSS(plantilla, datos) {
+  const cadena = (s) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\A ")}"`;
+  const partes = [];
+  let texto = "";
+  for (const trozo of plantilla.split(/(\{\w+\})/)) {
+    const m = /^\{(\w+)\}$/.exec(trozo);
+    const clave = m && m[1];
+    if (clave === "pagina" || clave === "paginas") {
+      if (texto) partes.push(cadena(texto));
+      texto = "";
+      partes.push(clave === "pagina" ? "counter(page)" : "counter(pages)");
+    } else texto += clave && clave in datos ? datos[clave] : trozo;
+  }
+  if (texto) partes.push(cadena(texto));
+  return partes.join(" ");
+}
+
+/** Escribe las reglas @page con el encabezado y el pie configurados. */
+function aplicarPagina() {
+  let st = document.getElementById("estilo-pagina");
+  if (!st) { st = document.createElement("style"); st.id = "estilo-pagina"; document.head.append(st); }
+  const c = configPagina();
+  const datos = {
+    titulo: tituloDocumento(ui.texto.value),
+    archivo: estado.nombreArchivo,
+    fecha: new Date().toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }),
+  };
+  const cajas = { encabezado: "top", pie: "bottom" };
+  const lados = { izquierda: "left", centro: "center", derecha: "right" };
+  let reglas = "";
+  for (const [zona, css] of Object.entries(cajas)) {
+    for (const [lado, l] of Object.entries(lados)) {
+      const v = (c[zona][lado] || "").trim();
+      if (v) reglas += `@${css}-${l} { content: ${contenidoCSS(v, datos)}; font: 9pt/1.2 Inter, "Segoe UI", Roboto, "DejaVu Sans", sans-serif; color: #555; }\n`;
+    }
+  }
+  st.textContent = `@media print { @page { margin: 18mm 14mm; ${reglas} } }`;
+}
+
+function conectarPagina() {
+  const panel = $("#i-panel");
+  const boton = $("#i-pagina");
+  const llenar = () => {
+    const c = configPagina();
+    panel.querySelectorAll("[data-pagina]").forEach((i) => {
+      const [zona, lado] = i.dataset.pagina.split(".");
+      i.value = c[zona][lado];
+    });
+  };
+  boton.onclick = () => {
+    panel.hidden = !panel.hidden;
+    boton.setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) { llenar(); panel.querySelector("input").focus(); }
+  };
+  panel.addEventListener("input", (e) => {
+    const [zona, lado] = (e.target.dataset.pagina || "").split(".");
+    if (!lado) return;
+    const c = configPagina();
+    c[zona][lado] = e.target.value;
+    prefs.pagina = c;
+    guardarPrefs();
+    aplicarPagina();
+  });
+  panel.addEventListener("submit", (e) => e.preventDefault());
+  $("#i-pagina-defecto").onclick = () => { delete prefs.pagina; guardarPrefs(); llenar(); aplicarPagina(); };
+  window.addEventListener("beforeprint", aplicarPagina);
+  aplicarPagina();
+}
+
 /** La vista de impresión: sólo el documento, a pantalla completa; Esc (o Salir) vuelve. */
 function vistaImpresion(on) {
   const b = document.body;
   if (on === b.classList.contains("impresion")) return;
   b.classList.toggle("impresion", on);
+  if (!on) { $("#i-panel").hidden = true; $("#i-pagina").setAttribute("aria-expanded", "false"); }
   if (on) {
+    aplicarPagina();
     if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => { /* sin pantalla completa: la vista sirve igual */ });
     }

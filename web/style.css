@@ -468,12 +468,22 @@ body.impresion #impresion-barra {
   background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 6px 8px;
   box-shadow: 0 2px 10px rgba(0,0,0,.18);
 }
+#i-panel { display: none; }
+body.impresion #i-panel:not([hidden]) {
+  display: block; position: fixed; top: 60px; right: 16px; z-index: 20; width: min(640px, calc(100vw - 32px));
+  background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 12px 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.18); font-size: 13px;
+}
+.i-grilla { display: grid; grid-template-columns: auto repeat(3, 1fr); gap: 6px 8px; align-items: center; }
+.i-grilla b { font-size: 12px; color: var(--tenue); }
+.i-grilla input { min-width: 0; font: 12.5px var(--mono); }
+#i-panel .nota { margin: 10px 0 6px; font-size: 12px; line-height: 1.5; }
+#i-panel .i-acciones { margin: 0; text-align: right; }
 #impresion-barra .primario { background: var(--acento); color: #fff; border-color: var(--acento); }
 
 @media print {
-  @page { margin: 16mm 14mm; }
   html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
-  .barra, .editor, #divisor, .estado, .vista-barra, #impresion-barra, #aviso, dialog { display: none !important; }
+  .barra, .editor, #divisor, .estado, .vista-barra, #impresion-barra, #i-panel, #aviso, dialog { display: none !important; }
   #panel, .vista { display: block !important; height: auto !important; overflow: visible !important; background: #fff !important; }
   #documento, #tarjetas { overflow: visible !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; min-height: 0 !important; max-width: none !important; }
   #documento > * { max-width: none; }

@@ -146,11 +146,29 @@ const impreso = await ev(`[getComputedStyle(${$("#impresion-barra")}).display, g
 comprobar("al imprimir sólo queda el documento", impreso[0] === "none" && impreso[1] === "avoid", impreso.join(" · "));
 await cmd("Emulation.setEmulatedMedia", { media: "" });
 comprobar("el documento terminó de dibujarse", !!(await hasta(`!document.querySelector('#documento figure.cargando') && !!${$("#documento figure img")}`)));
-if (process.env.PDF_IMPRESION) {
-  // Para revisar a ojo cómo sale el PDF: PDF_IMPRESION=salida.pdf npm run test:navegador
+// Encabezado y pie: el panel escribe las reglas @page, y el PDF las trae en cada página.
+await ev(`${$("#i-pagina")}.click()`);
+comprobar("panel de encabezado y pie", await ev(`!${$("#i-panel")}.hidden && getComputedStyle(${$("#i-panel")}).display === 'block'`));
+await ev(`(() => { const i = ${$('[data-pagina="pie.centro"]')}; i.value = 'Pie de {titulo} {pagina}/{paginas}'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+const reglasPagina = await ev(`document.getElementById('estilo-pagina').textContent`);
+comprobar("reglas @page del pie", reglasPagina.includes('@bottom-center { content: "Pie de Título del apunte " counter(page) "/" counter(pages);'), reglasPagina.slice(0, 160));
+{
   const { data } = await cmd("Page.printToPDF", { printBackground: true }).then((r) => r.result);
-  (await import("node:fs")).writeFileSync(process.env.PDF_IMPRESION, Buffer.from(data, "base64"));
+  const fs = await import("node:fs");
+  const pdf = join(perfil, "impresion.pdf");
+  fs.writeFileSync(pdf, Buffer.from(data, "base64"));
+  // Para revisar a ojo cómo sale el PDF: PDF_IMPRESION=salida.pdf npm run test:navegador
+  if (process.env.PDF_IMPRESION) fs.copyFileSync(pdf, process.env.PDF_IMPRESION);
+  let texto = null;
+  try { texto = execFileSync("pdftotext", [pdf, "-"], { encoding: "utf8" }); } catch { /* sin poppler */ }
+  if (texto !== null) {
+    comprobar("el PDF trae el encabezado y el pie", texto.includes("Pie de Título del apunte 1/1") && /Página 1 de 1/.test(texto) && texto.split("Título del apunte").length > 3,
+      JSON.stringify(texto.replace(/\s+/g, " ").slice(0, 160)));
+  }
 }
+await ev(`${$("#i-pagina-defecto")}.click()`);
+await ev(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
+comprobar("Esc cierra primero el panel", await ev(`${$("#i-panel")}.hidden && document.body.classList.contains('impresion')`));
 await ev(`${$("#i-salir")}.click()`);
 comprobar("Salir vuelve al editor", await hasta(`!document.body.classList.contains('impresion')`));
 await ev(`(() => { const c = ${$("#c-texto")}; c.checked = false; c.dispatchEvent(new Event('change')); })()`);
