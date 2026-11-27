@@ -37,8 +37,11 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   o *Salir* vuelve al editor. El HTML que traiga el texto se muestra escapado, nunca se ejecuta.
 - **Tipografías de Google Fonts** (*Letras…*): la URL de una familia (la de su página,
   `fonts.google.com/specimen/…`, o la de la hoja, `fonts.googleapis.com/css2?family=…`) o su
-  nombre, para el texto y para el código. Se descargan una vez (sólo los subconjuntos latino y
-  griego) y las `@font-face` van incrustadas en cada SVG, porque un SVG dentro de `<img>` no puede
+  nombre, para el texto y para el código. *Revisar* las descarga (sólo las letras latinas y
+  griegas: de una familia japonesa o china entran unos 50 KiB) y muestra cuánto pesa cada una;
+  recién después se puede *Aplicar*. Una familia de más de 1 MB no se usa: como va dentro de cada
+  SVG y cada `<img>` la decodifica, una de varios MB dispara la memoria y puede colgar el
+  navegador. Las letras se descargan una vez y las `@font-face` van incrustadas en cada SVG, porque un SVG dentro de `<img>` no puede
   pedir nada a la red: el SVG descargado se ve igual en cualquier lado. También se usan en el
   texto del documento, y una tercera familia puede ir sólo en sus títulos (`#`, `##`, …). Es lo único que el editor pide a la red. dibu mide las cajas con un ancho
   de letra promedio, así que una familia muy ancha puede quedar justa; PlantUML usa sus letras.
