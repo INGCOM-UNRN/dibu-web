@@ -252,12 +252,22 @@ const puml = await hasta(`${tarjetasOk} === 2 && ${listas} && [...document.query
 comprobar("fence plantuml dibujado con TeaVM", /^plantuml\|plantuml-[0-9a-f]{12}\.svg array\|estructura-/.test(puml || ""), puml || "");
 const svgPuml = await ev(`${$(".tarjeta .lienzo img")}._svg || ""`);
 comprobar("el SVG de PlantUML trae el texto del diagrama", svgPuml.startsWith("<svg") && svgPuml.includes("Roberto"), svgPuml.slice(0, 200));
-comprobar("Editar no aplica a PlantUML", await ev(`${$('.tarjeta button[data-acc="editar"]')}.disabled`));
+comprobar("Editar también abre los bloques PlantUML", !(await ev(`${$('.tarjeta button[data-acc="editar"]')}.disabled`)));
 const apilado = await ev(`estado.motor.llamar("dibu_stack", JSON.stringify(estado.tarjetas.filter(d => d.svg).map(d => d.svg))).then(r => r.ok && !r.resultado.error && r.resultado.svg.includes("Roberto") || JSON.stringify(r).slice(0, 300))`);
 comprobar("Exportar todo apila PlantUML y dibu", apilado === true, String(apilado));
 await fijarTexto(JSON.stringify("```puml\n// [ancho, 60%]\nA -> B\nesto no es plantuml ((\n```\n"));
 const errPuml = await hasta(`${$(".tarjeta.error .msg-error")}?.textContent`, 30000);
 comprobar("error de PlantUML en su línea", /^Línea 4: .*Syntax Error/.test(errPuml || ""), errPuml || "");
+// En el editor visual, un bloque PlantUML es una caja de texto con la línea del error marcada.
+await ev(`${$('.tarjeta button[data-acc="editar"]')}.click()`);
+const marcaPuml = await hasta(`(() => { const c = document.querySelector('#v-form .v-puml textarea'); const m = document.querySelector('#v-form .v-puml-msj');
+  return c && !m.hidden && !document.querySelector('.v-puml-marca').hidden && [c.value, document.querySelector('.v-puml-num .err')?.textContent, m.textContent].join('|'); })()`);
+comprobar("caja de texto PlantUML con la línea del error", /^\/\/ \[ancho, 60%\]\nA -> B\nesto no es plantuml \(\(\|4\|Línea 4: /.test(marcaPuml || ""), marcaPuml || "");
+await ev(`(() => { const c = document.querySelector('#v-form .v-puml textarea'); c.focus(); c.value = 'A -> B : hola'; c.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+const arreglado = await hasta(`${tarjetasOk} === 1 && document.querySelector('.v-puml-msj').hidden && document.querySelector('.v-puml-marca').hidden && ${$("#texto")}.value`, 30000);
+comprobar("la caja reescribe el código y quita la marca", arreglado === "```puml\nA -> B : hola\n```\n", JSON.stringify(arreglado));
+comprobar("la caja conserva el foco tras el render", await ev(`document.activeElement === document.querySelector('#v-form .v-puml textarea')`));
+await ev(`${$("#t-codigo")}.click()`);
 await fijarTexto(JSON.stringify("@startuml\nA -> B\n@enduml\n\n@startmindmap\n* raíz\n** hoja\n@endmindmap\n"));
 const docPuml = await hasta(`${tarjetasOk} === 2 && ${listas} && ${$("#v-resumen")}.textContent`, 30000);
 comprobar("documento PlantUML: un diagrama por @start…", /PlantUML/.test(docPuml || ""), docPuml || "");
