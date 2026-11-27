@@ -166,6 +166,35 @@ comprobar("reglas @page del pie", reglasPagina.includes('@bottom-center { conten
       JSON.stringify(texto.replace(/\s+/g, " ").slice(0, 160)));
   }
 }
+// Ningún diagrama se parte entre páginas: ni uno que cae al final de una hoja ni uno más alto
+// que la hoja (una pila de llamadas de ~3500 px, que se achica). Cada diagrama lleva marcas en
+// sus extremos, y todas tienen que salir en la misma página del PDF.
+{
+  const matriz = (n, filas) => `\`\`\`dibu\ntype: matrix\ntitle: D${n}a\nvalues: [${[...Array.from({ length: filas }, (_, k) => `[${k}, ${k}]`), `[D${n}b, x]`].join(", ")}]\n\`\`\`\n`;
+  const marcos = (n) => "```dibu\ntype: call_stack\ntitle: D" + n + "a\nframes:\n" + Array.from({ length: 10 }, (_, i) =>
+    `  - {function: ${i === 0 ? `D${n}b` : i === 9 ? `D${n}c` : `f${i}`}, vars: [${Array.from({ length: 12 }, (_, j) => `{name: v${j}, value: ${j}}`).join(", ")}]}`).join("\n") + "\n```\n";
+  const parrafo = "Texto de relleno para empujar el diagrama hacia el final de la hoja. ".repeat(6) + "\n\n";
+  const md = "# Cortes\n\n" + parrafo.repeat(5) + matriz(1, 8) + parrafo.repeat(3) + marcos(2) + parrafo + matriz(3, 9) + parrafo.repeat(4) + matriz(4, 9);
+  const marcas = { 1: ["D1a", "D1b"], 2: ["D2a", "D2b", "D2c"], 3: ["D3a", "D3b"], 4: ["D4a", "D4b"] };
+  await fijarTexto(JSON.stringify(md));
+  await hasta(`document.querySelectorAll('#documento figure img').length === 4 && !document.querySelector('#documento figure.cargando')`, 30000);
+  await esperar(300);
+  const { data } = await cmd("Page.printToPDF", { printBackground: true }).then((r) => r.result);
+  const fs = await import("node:fs");
+  const pdf = join(perfil, "cortes.pdf");
+  fs.writeFileSync(pdf, Buffer.from(data, "base64"));
+  if (process.env.PDF_CORTES) fs.copyFileSync(pdf, process.env.PDF_CORTES);
+  let texto = null;
+  try { texto = execFileSync("pdftotext", [pdf, "-"], { encoding: "utf8" }); } catch { /* sin poppler */ }
+  if (texto !== null) {
+    const paginas = texto.split("\f");
+    const pag = (m) => paginas.findIndex((p) => new RegExp(`\\b${m}\\b`).test(p)) + 1;
+    const donde = Object.entries(marcas).map(([n, ms]) => [n, ms.map(pag)]);
+    const cortados = donde.filter(([, ps]) => ps.includes(0) || new Set(ps).size > 1);
+    comprobar("ningún diagrama se parte entre páginas", cortados.length === 0,
+      `${paginas.length - 1} páginas · ` + donde.map(([n, ps]) => `D${n}: ${ps.join("/")}`).join(", "));
+  }
+}
 await ev(`${$("#i-pagina-defecto")}.click()`);
 await ev(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
 comprobar("Esc cierra primero el panel", await ev(`${$("#i-panel")}.hidden && document.body.classList.contains('impresion')`));
