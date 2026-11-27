@@ -23,7 +23,7 @@
       <select id="s-modo" title="Cómo interpretar el texto">
         <option value="auto">automático</option>
         <option value="yaml">YAML / JSON</option>
-        <option value="md">Markdown (```estructura, ```plantuml)</option>
+        <option value="md">Markdown (```dibu, ```plantuml)</option>
         <option value="puml">PlantUML (@startuml)</option>
       </select>
     </label>
@@ -106,7 +106,7 @@
     <p>Escribí bloques YAML o JSON con un campo <code>type</code> y la vista previa se actualiza mientras escribís. Todo se procesa en tu navegador: el motor <code>dibu</code> está compilado a WebAssembly y no se envía nada a ningún servidor.</p>
     <ul>
       <li><b>YAML / JSON</b>: una lista de bloques (<code>- type: …</code>), un bloque suelto o <code>{blocks: [...]}</code>. Cada elemento de la lista se renderiza por separado.</li>
-      <li><b>Markdown</b>: cada fence <code>```estructura</code> o <code>```statics</code> genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>. Con <b>texto</b>, la vista previa muestra el documento entero: el resto del Markdown entre los diagramas.</li>
+      <li><b>Markdown</b>: cada fence <code>```dibu</code> (o <code>```estructura</code>, <code>```statics</code>) genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>. Con <b>texto</b>, la vista previa muestra el documento entero: el resto del Markdown entre los diagramas.</li>
       <li><b>PlantUML</b>: en Markdown, los fences <code>```plantuml</code> o <code>```puml</code> se dibujan con PlantUML compilado a JavaScript (TeaVM), también dentro del navegador. Sin <code>@startuml</code> el bloque se envuelve solo, y las opciones de alucarD (<code>// [ancho, 60%]</code>) se ignoran. Un archivo <code>.puml</code> se abre como PlantUML: un diagrama por cada <code>@start…</code>/<code>@end…</code>. El theme Oscuro usa el modo oscuro de PlantUML; el motor se carga con el primer diagrama.</li>
       <li><b>Imprimir…</b> (en Markdown): una vista de impresión a pantalla completa, sin el editor, con el documento listo para imprimir o guardar como PDF desde el diálogo del navegador. <kbd>Esc</kbd> vuelve al editor.</li>
       <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>

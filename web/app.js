@@ -7,8 +7,9 @@ const DATOS = window.DIBU; // { wasm (base64), worker (fuente), catalogo (YAML),
 const $ = (s) => document.querySelector(s);
 const CLAVE_TEXTO = "dibu-web:texto";
 const CLAVE_PREFS = "dibu-web:prefs";
-// Fences de diagramas en Markdown: los de dibu (estructura, statics) y los de PlantUML (plantuml, puml).
-const RE_VALLA = /^(`{3,}|~{3,})[ \t]*(estructura|statics|plantuml|puml)[ \t]*$/;
+// Fences de diagramas en Markdown: los de dibu (dibu, y los heredados estructura y statics) y los de
+// PlantUML (plantuml, puml).
+const RE_VALLA = /^(`{3,}|~{3,})[ \t]*(dibu|estructura|statics|plantuml|puml)[ \t]*$/;
 const RE_PUML = /^(plantuml|puml)$/i;
 /** Comienzo de un diagrama PlantUML (`@startuml`, `@startmindmap`, …). */
 const RE_START = /^\s*@start(\w+)/;
@@ -465,7 +466,7 @@ function resumen() {
   eb.textContent = `${estado.trozos.length} bloque${estado.trozos.length === 1 ? "" : "s"} · ${n} diagrama${n === 1 ? "" : "s"}` +
     (errores ? ` · ${errores} con error` : "");
   eb.classList.toggle("err", errores > 0);
-  $("#v-resumen").textContent = estado.modo === "md" ? "Markdown · fences estructura/statics/plantuml"
+  $("#v-resumen").textContent = estado.modo === "md" ? "Markdown · fences dibu/estructura/plantuml"
     : estado.modo === "puml" ? "PlantUML · @start…/@end…" : "YAML / JSON";
 }
 
@@ -958,7 +959,7 @@ function insertarEjemplo(it) {
 
 const EJEMPLO_PUML = `# PlantUML y dibu en el mismo apunte
 
-Los fences \`\`\`plantuml (o \`\`\`puml) los dibuja PlantUML, dentro del navegador; los \`\`\`estructura, dibu.
+Los fences \`\`\`plantuml (o \`\`\`puml) los dibuja PlantUML, dentro del navegador; los \`\`\`dibu, dibu.
 
 \`\`\`plantuml
 @startuml
@@ -983,7 +984,7 @@ Figura <|-- Circulo
 Figura <|-- Rectangulo
 \`\`\`
 
-\`\`\`estructura
+\`\`\`dibu
 - type: array
   title: Los mismos datos, con dibu
   values: [3, 1, 4, 1, 5]
