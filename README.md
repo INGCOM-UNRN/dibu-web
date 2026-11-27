@@ -29,8 +29,21 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   entero, con el resto del Markdown (títulos, párrafos, listas, tablas, código, citas) entre los
   diagramas. *Imprimir…* abre una vista de impresión a pantalla completa, sin el editor, para
   imprimir o guardar como PDF desde el diálogo del navegador: los diagramas y los títulos no se
-  cortan entre páginas. <kbd>Esc</kbd> o *Salir* vuelve al editor. El HTML que traiga el texto
-  se muestra escapado, nunca se ejecuta.
+  cortan entre páginas. *Encabezado y pie…* define el texto de arriba y de abajo de cada página
+  (izquierda, centro y derecha), con `{titulo}` (el `title:` del front matter o el primer `#`),
+  `{archivo}`, `{fecha}`, `{pagina}` y `{paginas}`; por defecto, el título arriba y la fecha y
+  «Página N de M» abajo. Usa las cajas de margen de `@page` (Chrome/Edge 131 o posterior); hay
+  que desactivar los encabezados propios del navegador en su diálogo de impresión. <kbd>Esc</kbd>
+  o *Salir* vuelve al editor. El HTML que traiga el texto se muestra escapado, nunca se ejecuta.
+- **Tipografías de Google Fonts** (*Letras…*): la URL de una familia (la de su página,
+  `fonts.google.com/specimen/…`, o la de la hoja, `fonts.googleapis.com/css2?family=…`) o su
+  nombre, para el texto y para el código. Se descargan una vez (sólo los subconjuntos latino y
+  griego) y las `@font-face` van incrustadas en cada SVG, porque un SVG dentro de `<img>` no puede
+  pedir nada a la red: el SVG descargado se ve igual en cualquier lado. También se usan en el
+  texto del documento. Es lo único que el editor pide a la red. dibu mide las cajas con un ancho
+  de letra promedio, así que una familia muy ancha puede quedar justa; PlantUML usa sus letras.
+- **Ajuste de línea** (*ajustar líneas*, <kbd>Alt</kbd>+<kbd>Z</kbd>): el editor de código parte las
+  líneas largas al ancho del panel; cada número de línea toma la altura de su línea.
 - **Sincronización editor ↔ vista previa**: el bloque bajo el cursor resalta su diagrama. Al
   desplazar el editor, la vista previa lo acompaña. Un clic en un diagrama lleva a su bloque.
 - Cada bloque se renderiza por separado y se guarda en caché. Un error afecta solo a su bloque,
@@ -107,6 +120,7 @@ web/
   app.js         editor, resaltado, troceo en bloques, sincronización, exportación, documento e impresión
   markdown.js    Markdown mínimo y seguro para el texto de la vista de documento
   plantuml.js    carga perezosa del motor PlantUML (TeaVM), errores con su línea y nombres SHA-1
+  fuentes.js     tipografías de Google Fonts: descarga e incrustación de las @font-face en los SVG
   visual.js      editor visual: inspector de formularios y serializador YAML/JSON
   asistente.js   autocompletado, ayuda del campo y operaciones de línea del editor de código
   worker.js      Web Worker que instancia el WASM
