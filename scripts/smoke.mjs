@@ -36,7 +36,7 @@ for (const f of ["diagramas_control.yaml", "diagramas_cs.yaml", "diagramas_quimi
 }
 
 // Markdown: misma extracción que la SPA y comparación con los SVG versionados.
-const RE = /^(`{3,}|~{3,})[ \t]*(?:estructura|statics)[ \t]*$/;
+const RE = /^(`{3,}|~{3,})[ \t]*(?:dibu|estructura|statics)[ \t]*$/;
 const dirMd = join(dibu, "fixtures/kitchen_sink");
 const lineas = readFileSync(join(dirMd, "kitchen_sink.md"), "utf8").split("\n");
 // Diferencias de redondeo de libm (WASM vs glibc) en ±0,1 se toleran y se informan.

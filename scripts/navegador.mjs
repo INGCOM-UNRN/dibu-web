@@ -243,10 +243,10 @@ await tecla("Enter");
 const enter = await ev(`${$("#texto")}.value`);
 comprobar("Enter mantiene la sangría y completa la clave", enter.endsWith("\n  title: "), JSON.stringify(enter.slice(-14)));
 
-// 7b. PlantUML (motor TeaVM, cargado con el primer bloque): fence en Markdown, error en su línea,
+// 7b. PlantUML (motor TeaVM, cargado con el primer bloque) junto a un fence ```dibu: error en su línea,
 //     documento .puml con varios diagramas, theme oscuro y apilado junto a los de dibu.
 await ev(`${$("#t-codigo")}.click()`);
-await fijarTexto(JSON.stringify("# Apunte\n\n```plantuml\nAlicia -> Roberto : hola\n```\n\n```estructura\n- type: array\n  values: [1, 2]\n```\n"));
+await fijarTexto(JSON.stringify("# Apunte\n\n```plantuml\nAlicia -> Roberto : hola\n```\n\n```dibu\n- type: array\n  values: [1, 2]\n```\n"));
 const listas = `!document.querySelector('.tarjeta.viejo, .lienzo.cargando')`; // sin el SVG anterior de relleno
 const puml = await hasta(`${tarjetasOk} === 2 && ${listas} && [...document.querySelectorAll('.tarjeta')].map(t => t.querySelector('.tipo').textContent + '|' + t.querySelector('.ident').textContent).join(' ')`, 60000);
 comprobar("fence plantuml dibujado con TeaVM", /^plantuml\|plantuml-[0-9a-f]{12}\.svg array\|estructura-/.test(puml || ""), puml || "");

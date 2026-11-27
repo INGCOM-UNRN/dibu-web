@@ -75,6 +75,7 @@ caso("Markdown fuera del fence", "Texto ‸\n```estructura\n- type: lewis\n```",
 caso("Markdown dentro de un fence PlantUML: nada", "```plantuml\nA -> B\nty‸\n```\n", null, "md");
 caso("Markdown después de un fence PlantUML", "```puml\nA -> B\n```\n\n```estructura\n- type: lewis\n  mo‸\n```", { modo: "clave", tipo: "lewis", prefijo: "mo" }, "md");
 caso("documento PlantUML: nada", "@startuml\nty‸\n@enduml", null, "puml");
+caso("Markdown dentro de un fence dibu", "```dibu\n- type: lewis\n  mo‸\n```\n", { modo: "clave", tipo: "lewis", prefijo: "mo" }, "md");
 caso("Markdown segundo fence", "```estructura\n- type: a\n```\n\n```estructura\ntype: queue\nti‸\n```", { modo: "clave", tipo: "queue" }, "md");
 
 // Valores de un campo anidado, desde un `match` sobre `.get("clave")` del renderizador.
