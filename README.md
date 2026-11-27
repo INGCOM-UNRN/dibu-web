@@ -12,7 +12,7 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   digitales, arquitectura, sistemas operativos, redes, bases de datos, señales, probabilidad y
   circuitos). Usa el mismo motor que la CLI, así que la salida es la misma.
 - Formatos: YAML/JSON (lista de bloques, bloque suelto o `{blocks: [...]}`) y **Markdown** con
-  fences ` ```estructura ` / ` ```statics ` / `~~~…`. En Markdown, cada fence genera el SVG
+  fences ` ```dibu ` (o ` ```estructura ` / ` ```statics `, los nombres heredados) / `~~~…`. En Markdown, cada fence genera el SVG
   apilado con el mismo nombre `estructura-<hash>.svg` que produce `dibu sync-md`.
 - **PlantUML**: los fences ` ```plantuml ` / ` ```puml ` de un Markdown se dibujan con
   [PlantUML compilado a JavaScript con TeaVM](https://www.npmjs.com/package/@plantuml/core),
