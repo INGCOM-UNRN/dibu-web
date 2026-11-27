@@ -28,7 +28,7 @@ const ui = {
 };
 
 const prefs = Object.assign(
-  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false, ajuste: false, fuentes: { sans: "", mono: "" } },
+  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false, ajuste: false, fuentes: { sans: "", mono: "", titulos: "" } },
   leerJSON(localStorage.getItem(CLAVE_PREFS)) || {}
 );
 
@@ -40,7 +40,7 @@ const estado = {
   version: 0,
   activo: -1,      // índice del trozo bajo el cursor
   cache: new Map(),
-  fuentes: { sans: null, mono: null }, // tipografías de Google Fonts ya descargadas
+  fuentes: { sans: null, mono: null, titulos: null }, // tipografías de Google Fonts ya descargadas
   nombreArchivo: "diagramas.yaml",
 };
 
@@ -1247,9 +1247,10 @@ function conectarEventos() {
 // ---------- tipografías de Google Fonts ----------
 /** Descarga las tipografías de prefs.fuentes y las aplica al documento y a los diagramas. */
 async function aplicarFuentes() {
-  const estadoCampo = { sans: $("#f-sans-estado"), mono: $("#f-mono-estado") };
-  const nuevas = { sans: null, mono: null };
-  await Promise.all(["sans", "mono"].map(async (rol) => {
+  const ROLES = ["sans", "mono", "titulos"];
+  const estadoCampo = Object.fromEntries(ROLES.map((r) => [r, $(`#f-${r}-estado`)]));
+  const nuevas = { sans: null, mono: null, titulos: null };
+  await Promise.all(ROLES.map(async (rol) => {
     const entrada = (prefs.fuentes || {})[rol] || "";
     if (!entrada.trim()) { estadoCampo[rol].textContent = "la de dibu"; estadoCampo[rol].className = "nota"; return; }
     estadoCampo[rol].textContent = "descargando…";
@@ -1267,9 +1268,12 @@ async function aplicarFuentes() {
   estado.fuentes = nuevas;
   let st = document.getElementById("estilo-fuentes");
   if (!st) { st = document.createElement("style"); st.id = "estilo-fuentes"; document.head.append(st); }
-  st.textContent = [nuevas.sans?.css, nuevas.mono?.css,
+  // Los títulos del documento (#, ##, …) y los de la vista de impresión: sólo en la página, no en
+  // los SVG (dibu dibuja los títulos de los diagramas con la letra del texto).
+  st.textContent = [nuevas.sans?.css, nuevas.mono?.css, nuevas.titulos?.css,
     nuevas.sans ? `#documento { font-family: '${nuevas.sans.familia}', var(--sans); }` : "",
     nuevas.mono ? `#documento code, #documento pre { font-family: '${nuevas.mono.familia}', var(--mono); }` : "",
+    nuevas.titulos ? `#documento :is(h1, h2, h3, h4, h5, h6) { font-family: '${nuevas.titulos.familia}', var(--sans); }` : "",
   ].filter(Boolean).join("\n");
   programarRender(true);
 }
@@ -1281,25 +1285,25 @@ function pedirFuentes() {
 
 function conectarFuentes() {
   const dlg = $("#fuentes");
-  const campos = { sans: $("#f-sans"), mono: $("#f-mono") };
+  const campos = { sans: $("#f-sans"), mono: $("#f-mono"), titulos: $("#f-titulos") };
   $("#b-fuentes").onclick = () => {
     for (const rol in campos) campos[rol].value = (prefs.fuentes || {})[rol] || "";
     dlg.showModal();
   };
   $("#f-aplicar").onclick = (e) => {
     e.preventDefault();
-    prefs.fuentes = { sans: campos.sans.value.trim(), mono: campos.mono.value.trim() };
+    prefs.fuentes = Object.fromEntries(Object.entries(campos).map(([rol, c]) => [rol, c.value.trim()]));
     guardarPrefs();
     pedirFuentes();
   };
   $("#f-quitar").onclick = (e) => {
     e.preventDefault();
-    campos.sans.value = campos.mono.value = "";
-    prefs.fuentes = { sans: "", mono: "" };
+    for (const c of Object.values(campos)) c.value = "";
+    prefs.fuentes = { sans: "", mono: "", titulos: "" };
     guardarPrefs();
     pedirFuentes();
   };
-  if (prefs.fuentes && (prefs.fuentes.sans || prefs.fuentes.mono)) pedirFuentes();
+  if (prefs.fuentes && Object.values(prefs.fuentes).some(Boolean)) pedirFuentes();
 }
 
 // ---------- encabezado y pie de página (márgenes de @page) ----------

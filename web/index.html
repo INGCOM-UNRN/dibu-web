@@ -106,11 +106,13 @@
 <dialog id="fuentes">
   <form method="dialog" class="dlg">
     <header><h2>Tipografías de Google Fonts</h2><button class="icono" aria-label="Cerrar">✕</button></header>
-    <p>Pegá la URL de una familia de <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> (la de su página, <code>fonts.google.com/specimen/Roboto+Slab</code>, o la de la hoja, <code>fonts.googleapis.com/css2?family=…</code>) o sólo su nombre. Las letras se descargan una vez y van incrustadas en cada SVG, así que los diagramas exportados se ven igual en cualquier lado. Un campo vacío usa la letra de dibu.</p>
+    <p>Pegá la URL de una familia de <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> (la de su página, <code>fonts.google.com/specimen/Roboto+Slab</code>, o la de la hoja, <code>fonts.googleapis.com/css2?family=…</code>) o sólo su nombre. Las letras se descargan una vez y van incrustadas en cada SVG, así que los diagramas exportados se ven igual en cualquier lado. Un campo vacío usa la letra de dibu. «Títulos» es para los <code>#</code>, <code>##</code>, … del documento Markdown y su impresión.</p>
     <label class="f-campo">Texto <input id="f-sans" placeholder="https://fonts.google.com/specimen/Source+Sans+3" spellcheck="false"></label>
     <p id="f-sans-estado" class="nota"></p>
     <label class="f-campo">Código <input id="f-mono" placeholder="https://fonts.google.com/specimen/Fira+Code" spellcheck="false"></label>
     <p id="f-mono-estado" class="nota"></p>
+    <label class="f-campo">Títulos <input id="f-titulos" placeholder="https://fonts.google.com/specimen/Playfair+Display" spellcheck="false"></label>
+    <p id="f-titulos-estado" class="nota"></p>
     <p class="nota">dibu calcula el tamaño de las cajas con un ancho de letra promedio: una familia muy ancha puede quedar justa. PlantUML usa sus propias letras.</p>
     <p class="i-acciones"><button id="f-quitar">Quitar</button> <button id="f-aplicar" class="primario">Aplicar</button></p>
   </form>
@@ -128,7 +130,7 @@
       <li>Hacé clic en un diagrama para ir a su bloque en el editor; al mover el cursor se resalta el diagrama correspondiente.</li>
       <li><b>Themes</b>: los botones Tinta, Color, Contraste y Oscuro eligen el theme de todos los diagramas (lo mismo que <code>dibu --theme</code>). Un bloque puede elegir el suyo con <code>theme: dark</code> o con un objeto <code>{extends, colors, typography}</code>; se exporta tal como se ve.</li>
       <li><b>ajustar líneas</b> (<kbd>Alt</kbd>+<kbd>Z</kbd>): parte las líneas largas del código al ancho del editor.</li>
-      <li><b>Letras…</b>: tipografías de Google Fonts para el texto y el código de los diagramas, incrustadas en cada SVG.</li>
+      <li><b>Letras…</b>: tipografías de Google Fonts para el texto y el código de los diagramas, incrustadas en cada SVG, y para los títulos del documento.</li>
       <li><b>Visual</b> (<kbd>Ctrl</kbd>+<kbd>E</kbd>): editá el diagrama seleccionado con formularios. Los campos sugeridos salen de los ejemplos y del código del motor; arrastrá la etiqueta de un número para variarlo en vivo. Los cambios se escriben en el código al instante. Un bloque PlantUML se edita en una caja de texto, con la línea del error de sintaxis marcada.</li>
       <li><b>Asistente</b>: al escribir una clave o un valor aparecen sugerencias tomadas de los ejemplos y del código del motor (<kbd>Ctrl</kbd>+<kbd>Espacio</kbd> las fuerza). Elegir el <code>type</code> de un bloque vacío lo completa con los campos de ejemplo (<kbd>Shift</kbd>+<kbd>Enter</kbd>: sólo el tipo). La barra inferior describe el campo bajo el cursor y avisa si no lo reconoce.</li>
       <li>Edición: <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> mover líneas · <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> duplicar · <kbd>Ctrl</kbd>+<kbd>/</kbd> comentar · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> borrar línea · Enter mantiene la sangría y continúa listas.</li>
