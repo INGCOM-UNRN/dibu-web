@@ -426,8 +426,7 @@ function actualizarTarjeta(el, d, i) {
   const img = lienzo.querySelector("img");
   el.classList.toggle("error", !!d.error);
   el.classList.toggle("viejo", false);
-  const puml = estado.trozos[d.trozo]?.lenguaje === "plantuml";
-  el.querySelectorAll("header button").forEach((b) => (b.disabled = b.dataset.acc === "editar" ? puml : !d.svg));
+  el.querySelectorAll("header button").forEach((b) => (b.disabled = b.dataset.acc !== "editar" && !d.svg));
   err.hidden = !d.error;
   err.textContent = !d.error ? "" : /en la línea \d+/.test(d.error) ? d.error
     : `Línea ${(d.linea ?? estado.trozos[d.trozo].ini) + 1}: ${d.error}`;

@@ -311,7 +311,16 @@ async function sincronizarVisual() {
   }
   const tr = estado.trozos[V.sel.trozo];
   if (!tr) { V.raiz = null; V.fuente = null; V.error = null; pintarInspector(); return; }
-  if (tr.lenguaje === "plantuml") { V.raiz = null; V.fuente = null; V.error = null; pintarInspector(); return; }
+  if (tr.lenguaje === "plantuml") {
+    V.raiz = null; V.error = null;
+    const texto = textoRango(tr);
+    // Si el cambio salió de la caja de texto no se reconstruye: se perderían el cursor y el foco.
+    const caja = $("#v-form .v-puml textarea");
+    if (caja && caja.dataset.trozo === String(V.sel.trozo) && caja.value === texto) { marcarErrorPuml(); return; }
+    V.fuente = texto;
+    pintarInspector();
+    return;
+  }
   const texto = textoRango(tr);
   if (texto === V.fuente && V.raiz !== null) return;
   const v = ++V.version;
@@ -510,6 +519,7 @@ function actualizarNavegador() {
     }
   });
   if (!items.length) lista.append(el("li", { class: "vacio-lista" }, "Sin bloques: agregá uno con «+ Nuevo»."));
+  marcarErrorPuml();
   const selEl = lista.querySelector(".sel");
   if (selEl) selEl.scrollIntoView({ block: "nearest" });
   const multi = bloquesDelTrozo().length > 1;
@@ -532,8 +542,8 @@ function pintarInspector() {
     return;
   }
   if (tr.lenguaje === "plantuml") {
-    cont.append(el("div", { class: "vacio" }, "Los diagramas PlantUML se editan en la pestaña Código.",
-      el("br"), el("button", { type: "button", onclick: () => abrirVisual(false) }, "Ir al código")));
+    cont.append(editorPuml(tr));
+    marcarErrorPuml();
     return;
   }
   if (V.error) {
@@ -580,6 +590,96 @@ function pintarInspector() {
   cont.append(agregarCampo(tipo, "", b));
   cont.scrollTop = scroll;
   if (foco) cont.querySelector(`[data-ruta="${CSS.escape(foco)}"]`)?.focus();
+}
+
+// ---------- PlantUML: una caja de texto, con la línea del error marcada ----------
+const ALTO_LINEA_PUML = 20; // px, igual que el line-height de .v-puml textarea
+const MARGEN_PUML = 8;      // px, el padding de arriba de la caja
+
+/** El código del bloque PlantUML en una caja de texto, con los números de línea del documento. */
+function editorPuml(tr) {
+  const numeros = el("div", { class: "v-puml-num", "aria-hidden": "true" });
+  const marca = el("div", { class: "v-puml-marca", hidden: true });
+  const caja = el("textarea", {
+    wrap: "off",
+    value: textoRango(tr),
+    "aria-label": "Código PlantUML del bloque",
+    oninput: () => { escribirPuml(caja); marcarErrorPuml(); },
+    onscroll: () => { numeros.scrollTop = caja.scrollTop; marcarErrorPuml(); },
+  });
+  caja.spellcheck = false;
+  caja.dataset.trozo = String(V.sel.trozo);
+  const lineas = tr.rFin - tr.rIni > 0 ? ` · líneas ${tr.rIni + 1}–${tr.rFin}` : "";
+  return el("div", { class: "v-puml-bloque" },
+    el("div", { class: "v-cabecera" },
+      el("b", { class: "v-tipo" }, "PlantUML"),
+      el("span", { class: "flex" }),
+      el("span", { class: "nota" }, `se dibuja al dejar de escribir${lineas}`),
+      el("button", { type: "button", onclick: () => abrirVisual(false) }, "Ver en Código")),
+    el("div", { class: "v-puml" }, numeros, el("div", { class: "v-puml-caja" }, marca, caja)),
+    el("button", { type: "button", class: "v-puml-msj", hidden: true, onclick: () => irALineaPuml() }));
+}
+
+/** Copia la caja al documento (sólo las líneas del trozo) y programa el render. */
+function escribirPuml(caja) {
+  const tr = estado.trozos[V.sel.trozo];
+  if (!tr || tr.lenguaje !== "plantuml") return;
+  guardarHistorial("puml");
+  const [a, b] = rangoTrozo(tr);
+  reemplazarLineas(a, b, caja.value);
+  V.fuente = caja.value;
+  estado.trozos = trocear(ui.texto.value, estado.modo);
+  alEditar({ retardo: 400 });
+}
+
+/** La línea del error (relativa a la caja) y su mensaje, o null; undefined mientras se dibuja. */
+function errorPuml() {
+  const tr = estado.trozos[V.sel.trozo];
+  const d = estado.tarjetas.find((t) => t.trozo === V.sel.trozo);
+  if (!tr || !d) return null;
+  if (d.cargando) return undefined;
+  if (!d.error) return null;
+  const n = textoRango(tr).split("\n").length;
+  const rel = d.linea != null ? d.linea - tr.rIni : -1;
+  return { linea: rel >= 0 && rel < n ? rel : null, msj: d.error };
+}
+
+/** Pinta los números de línea, la franja del error y el mensaje debajo de la caja. */
+function marcarErrorPuml() {
+  const caja = $("#v-form .v-puml textarea");
+  const tr = estado.trozos[V.sel.trozo];
+  if (!caja || !tr || tr.lenguaje !== "plantuml") return;
+  const e = errorPuml();
+  // Mientras se dibuja (undefined) queda la marca anterior.
+  if (e !== undefined) caja.dataset.linea = e && e.linea != null ? e.linea : "";
+  const err = caja.dataset.linea ? Number(caja.dataset.linea) : null;
+  const n = caja.value.split("\n").length;
+  const numeros = caja.closest(".v-puml").querySelector(".v-puml-num");
+  let html = "";
+  for (let k = 0; k < n; k++) html += `<div${k === err ? ' class="err"' : ""}>${tr.rIni + k + 1}</div>`;
+  numeros.innerHTML = html + "<div>&nbsp;</div>"; // una de más: el scroll horizontal de la caja
+  numeros.scrollTop = caja.scrollTop;
+  const marca = caja.previousSibling;
+  marca.hidden = err === null;
+  if (err !== null) marca.style.top = `${MARGEN_PUML + err * ALTO_LINEA_PUML - caja.scrollTop}px`;
+  if (e === undefined) return;
+  const msj = caja.closest(".v-puml-bloque").querySelector(".v-puml-msj");
+  msj.hidden = !e;
+  msj.textContent = !e ? "" : e.linea != null ? `Línea ${tr.rIni + e.linea + 1}: ${e.msj}` : e.msj;
+  msj.title = e && e.linea != null ? "Ir a la línea del error" : "";
+}
+
+/** Lleva el cursor de la caja a la línea del error. */
+function irALineaPuml() {
+  const caja = $("#v-form .v-puml textarea");
+  if (!caja || !caja.dataset.linea) return;
+  const L = caja.value.split("\n");
+  const k = Math.min(Number(caja.dataset.linea), L.length - 1);
+  let p = 0;
+  for (let i = 0; i < k; i++) p += L[i].length + 1;
+  caja.focus();
+  caja.setSelectionRange(p, p + L[k].length);
+  caja.scrollTop = Math.max(0, k * ALTO_LINEA_PUML - caja.clientHeight / 2);
 }
 
 /** Selector "+ campo" con las claves conocidas que faltan. */

@@ -480,3 +480,35 @@ body.impresion #impresion-barra {
   .lienzo img, #documento figure.diagrama img { max-width: 100% !important; height: auto !important; }
   #documento a { color: inherit; text-decoration: none; }
 }
+
+/* ---------- editor visual: bloque PlantUML ---------- */
+.v-puml {
+  display: grid; grid-template-columns: auto 1fr;
+  border: 1px solid var(--borde); border-radius: 6px;
+  background: var(--panel); overflow: hidden;
+}
+.v-puml-num {
+  overflow: hidden; padding: 8px 6px 8px 8px; min-width: 2.6em;
+  font: 12.5px/20px var(--mono); color: var(--tenue); text-align: right;
+  border-right: 1px solid var(--borde); user-select: none;
+}
+.v-puml-num .err { color: var(--error); font-weight: 700; }
+.v-puml-caja { position: relative; min-width: 0; overflow: hidden; }
+.v-puml-caja textarea {
+  display: block; width: 100%; height: 55vh; min-height: 160px; box-sizing: border-box;
+  margin: 0; padding: 8px; border: 0; border-radius: 0; resize: vertical;
+  font: 12.5px/20px var(--mono); white-space: pre; overflow: auto;
+  background: transparent; color: var(--texto); position: relative; tab-size: 2;
+}
+.v-puml-caja textarea:focus { outline: none; }
+.v-puml:focus-within { border-color: var(--acento); }
+.v-puml-marca {
+  position: absolute; left: 0; right: 0; height: 20px; pointer-events: none;
+  background: var(--error-suave); border-left: 3px solid var(--error);
+}
+.v-puml-msj {
+  display: block; width: 100%; margin-top: 8px; text-align: left; cursor: pointer;
+  font: 12px/1.5 var(--mono); white-space: pre-wrap;
+  color: var(--error); background: var(--error-suave); border: 1px solid var(--error); border-radius: 6px;
+}
+.v-puml-msj[hidden] { display: none; }
