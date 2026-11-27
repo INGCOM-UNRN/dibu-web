@@ -1,12 +1,17 @@
 // dibu-web: editor con vista previa sincronizada para los diagramas de `dibu`.
-// SPA sin servidor: el motor Rust corre como WebAssembly dentro de un Web Worker.
+// SPA sin servidor: el motor Rust corre como WebAssembly dentro de un Web Worker, y los bloques
+// PlantUML los dibuja PlantUML compilado a JavaScript con TeaVM (plantuml.js).
 "use strict";
 
 const DATOS = window.DIBU; // { wasm (base64), worker (fuente), catalogo (YAML), markdown (MD) }
 const $ = (s) => document.querySelector(s);
 const CLAVE_TEXTO = "dibu-web:texto";
 const CLAVE_PREFS = "dibu-web:prefs";
-const RE_VALLA = /^(`{3,}|~{3,})[ \t]*(?:estructura|statics)[ \t]*$/;
+// Fences de diagramas en Markdown: los de dibu (estructura, statics) y los de PlantUML (plantuml, puml).
+const RE_VALLA = /^(`{3,}|~{3,})[ \t]*(estructura|statics|plantuml|puml)[ \t]*$/;
+const RE_PUML = /^(plantuml|puml)$/i;
+/** Comienzo de un diagrama PlantUML (`@startuml`, `@startmindmap`, …). */
+const RE_START = /^\s*@start(\w+)/;
 const TIEMPO_MAX_MS = 8000;
 
 const ui = {
@@ -109,13 +114,34 @@ function base64ABytes(b64) {
 // ======================================================================
 function modoEfectivo(texto) {
   if (prefs.modo !== "auto") return prefs.modo;
-  return texto.split("\n").some((l) => RE_VALLA.test(l)) ? "md" : "yaml";
+  const lineas = texto.split("\n");
+  if (lineas.some((l) => RE_VALLA.test(l))) return "md";
+  // Un archivo PlantUML (.puml): la primera línea con contenido es un `@start…`.
+  const primera = lineas.find((l) => l.trim() && !/^\s*'/.test(l));
+  return primera && RE_START.test(primera) ? "puml" : "yaml";
+}
+
+/** PlantUML: un trozo por cada `@start…`/`@end…`; sin ninguno cerrado, el texto entero. */
+function troceoPuml(lineas) {
+  const trozos = [];
+  for (let i = 0; i < lineas.length; i++) {
+    const m = RE_START.exec(lineas[i]);
+    if (!m) continue;
+    const fin = new RegExp(`^\\s*@end${m[1]}\\b`);
+    let j = i + 1;
+    while (j < lineas.length && !fin.test(lineas[j])) j++;
+    const hasta = Math.min(j + 1, lineas.length);
+    trozos.push({ ini: i, fin: hasta, cuerpoIni: i, rIni: i, rFin: hasta, lenguaje: "plantuml", texto: lineas.slice(i, hasta).join("\n") });
+    i = j;
+  }
+  return trozos;
 }
 
 /** Devuelve [{ini, fin, texto, sinCerrar?}] con `ini`/`fin` como líneas (fin exclusivo). */
 function trocear(texto, modo) {
   const lineas = texto.split("\n");
   const trozos = [];
+  if (modo === "puml") return troceoPuml(lineas);
   if (modo === "md") {
     for (let i = 0; i < lineas.length; i++) {
       const m = RE_VALLA.exec(lineas[i]);
@@ -127,6 +153,7 @@ function trocear(texto, modo) {
         ini: i, fin: Math.min(j + 1, lineas.length), cuerpoIni: i + 1, rIni: i + 1, rFin: j,
         texto: lineas.slice(i + 1, j).join("\n"),
         sinCerrar: j >= lineas.length,
+        lenguaje: RE_PUML.test(m[2]) ? "plantuml" : "dibu",
       });
       i = j;
     }
@@ -172,10 +199,23 @@ function sobre(texto) {
   return JSON.stringify({ text: texto, theme: THEMES[prefs.paleta] || "ink" });
 }
 
+/** Un bloque PlantUML, con el motor TeaVM: una tarjeta, con el error en su línea si lo hay. */
+async function calcularPlantUML(tr) {
+  try {
+    const r = await PUML.dibujar(tr.texto, prefs.paleta === "oscuro");
+    if (r.error) return { items: [{ error: r.error, linea: tr.cuerpoIni + r.linea, tipo: "plantuml" }], guardar: true };
+    return { items: [{ svg: r.svg, tipo: "plantuml", nombre: PUML.nombre(tr.texto) }], guardar: true };
+  } catch (e) {
+    // Un fallo del motor (o que el build no lo traiga) no se guarda en caché: se reintenta.
+    return { items: [{ error: String(e.message || e), linea: tr.ini, tipo: "plantuml" }], guardar: false };
+  }
+}
+
 async function calcularTrozo(tr, modo) {
   if (tr.sinCerrar) {
     return { items: [{ error: "el fence no está cerrado", linea: tr.ini }], guardar: false };
   }
+  if (tr.lenguaje === "plantuml") return calcularPlantUML(tr);
   if (modo === "md") {
     const r = await estado.motor.llamar("dibu_render_md_theme", sobre(tr.texto));
     if (!r.ok) return { items: [{ error: r.error, linea: tr.ini }], guardar: false };
@@ -200,7 +240,8 @@ async function calcularTrozo(tr, modo) {
   };
 }
 
-function tipoDeTexto(t) {
+function tipoDeTexto(t, tr) {
+  if (tr && tr.lenguaje === "plantuml") return "plantuml";
   const m = /^[ \t-]*type:\s*["']?([\w-]+)/m.exec(t);
   return m ? m[1] : "?";
 }
@@ -221,7 +262,7 @@ async function renderizar() {
   estado.trozos = trozos;
   estado.modo = modo;
   if (cambioModo) resaltarTodo();
-  ui.modo.title = `Interpretando como ${modo === "md" ? "Markdown" : "YAML / JSON"}`;
+  ui.modo.title = `Interpretando como ${NOMBRE_MODO[modo]}`;
   document.body.classList.toggle("modo-md", modo === "md");
   if (modo !== "md" && document.body.classList.contains("impresion")) vistaImpresion(false);
 
@@ -261,7 +302,7 @@ function pintar() {
   const lista = [];
   estado.trozos.forEach((tr, ti) => {
     if (!tr.res) {
-      lista.push({ trozo: ti, cargando: true, tipo: tipoDeTexto(tr.texto) });
+      lista.push({ trozo: ti, cargando: true, tipo: tipoDeTexto(tr.texto, tr) });
       return;
     }
     tr.res.items.forEach((it, k) => lista.push({ ...it, trozo: ti, sub: k, multi: tr.res.items.length > 1 }));
@@ -384,7 +425,8 @@ function actualizarTarjeta(el, d, i) {
   const img = lienzo.querySelector("img");
   el.classList.toggle("error", !!d.error);
   el.classList.toggle("viejo", false);
-  el.querySelectorAll("header button").forEach((b) => (b.disabled = !d.svg && b.dataset.acc !== "editar"));
+  const puml = estado.trozos[d.trozo]?.lenguaje === "plantuml";
+  el.querySelectorAll("header button").forEach((b) => (b.disabled = b.dataset.acc === "editar" ? puml : !d.svg));
   err.hidden = !d.error;
   err.textContent = !d.error ? "" : /en la línea \d+/.test(d.error) ? d.error
     : `Línea ${(d.linea ?? estado.trozos[d.trozo].ini) + 1}: ${d.error}`;
@@ -414,6 +456,8 @@ function actualizarTarjeta(el, d, i) {
   }
 }
 
+const NOMBRE_MODO = { md: "Markdown", yaml: "YAML / JSON", puml: "PlantUML" };
+
 function resumen() {
   const n = estado.tarjetas.filter((d) => d.svg).length;
   const errores = estado.tarjetas.filter((d) => d.error).length;
@@ -421,7 +465,8 @@ function resumen() {
   eb.textContent = `${estado.trozos.length} bloque${estado.trozos.length === 1 ? "" : "s"} · ${n} diagrama${n === 1 ? "" : "s"}` +
     (errores ? ` · ${errores} con error` : "");
   eb.classList.toggle("err", errores > 0);
-  $("#v-resumen").textContent = estado.modo === "md" ? "Markdown · fences estructura/statics" : "YAML / JSON";
+  $("#v-resumen").textContent = estado.modo === "md" ? "Markdown · fences estructura/statics/plantuml"
+    : estado.modo === "puml" ? "PlantUML · @start…/@end…" : "YAML / JSON";
 }
 
 // ---------- acciones por tarjeta ----------
@@ -564,12 +609,21 @@ function resaltarYaml(linea) {
   return out;
 }
 
+/** PlantUML: comentarios ('), directivas (@start…, !theme, skinparam) y el resto como texto. */
+function resaltarPuml(linea) {
+  if (/^\s*'/.test(linea)) return `<span class="c">${esc(linea)}</span>`;
+  if (/^\s*\/\/\s*\[/.test(linea)) return `<span class="c">${esc(linea)}</span>`;
+  if (/^\s*(@\w+|!\w+|skinparam\b|title\b)/.test(linea)) return `<span class="k">${esc(linea)}</span>`;
+  return esc(linea);
+}
+
 function resaltarTodo() {
   const lineas = ui.texto.value.split("\n");
   const md = estado.modo === "md";
   const act = estado.trozos[estado.activo];
   const errores = estado.lineasError || new Set();
   let enValla = null;
+  let pumlValla = false;
   let html = "";
   let nums = "";
   for (let i = 0; i < lineas.length; i++) {
@@ -578,14 +632,14 @@ function resaltarTodo() {
     if (md) {
       if (enValla === null) {
         const m = RE_VALLA.exec(l);
-        if (m) { enValla = m[1]; cuerpo = `<span class="v">${esc(l)}</span>`; }
+        if (m) { enValla = m[1]; pumlValla = RE_PUML.test(m[2]); cuerpo = `<span class="v">${esc(l)}</span>`; }
         else if (/^#{1,6}\s/.test(l)) cuerpo = `<span class="h">${esc(l)}</span>`;
         else cuerpo = `<span class="md">${esc(l)}</span>`;
       } else if (l.trimEnd() === enValla) {
         enValla = null;
         cuerpo = `<span class="v">${esc(l)}</span>`;
-      } else cuerpo = resaltarYaml(l);
-    } else cuerpo = resaltarYaml(l);
+      } else cuerpo = pumlValla ? resaltarPuml(l) : resaltarYaml(l);
+    } else cuerpo = estado.modo === "puml" ? resaltarPuml(l) : resaltarYaml(l);
     const clases = (act && i >= act.ini && i < act.fin ? " act" : "") + (errores.has(i) ? " err" : "");
     html += `<div class="l${clases}">${cuerpo || "​"}</div>`;
     nums += `<div${clases ? ` class="${clases.trim()}"` : ""}>${i + 1}</div>`;
@@ -773,7 +827,9 @@ function cargarTexto(texto, nombre) {
 
 function guardarArchivo() {
   let nombre = estado.nombreArchivo;
-  if (modoEfectivo(ui.texto.value) === "md" && !/\.(md|markdown)$/i.test(nombre)) nombre = nombre.replace(/\.[^.]+$/, "") + ".md";
+  const modo = modoEfectivo(ui.texto.value);
+  if (modo === "md" && !/\.(md|markdown)$/i.test(nombre)) nombre = nombre.replace(/\.[^.]+$/, "") + ".md";
+  if (modo === "puml" && !/\.(puml|plantuml|pu)$/i.test(nombre)) nombre = nombre.replace(/\.[^.]+$/, "") + ".puml";
   descargar(nombre, ui.texto.value, "text/plain;charset=utf-8");
 }
 
@@ -861,7 +917,8 @@ function poblarEjemplos() {
   const sel = ui.ejemplo;
   const extra = document.createElement("optgroup");
   extra.label = "Documentos completos";
-  extra.innerHTML = `<option value="@catalogo">Catálogo completo (YAML)</option><option value="@md">Documento Markdown de ejemplo</option>`;
+  extra.innerHTML = `<option value="@catalogo">Catálogo completo (YAML)</option><option value="@md">Documento Markdown de ejemplo</option>` +
+    (PUML.disponible ? `<option value="@puml">Markdown con PlantUML y dibu</option>` : "");
   sel.appendChild(extra);
   catalogo.forEach((s, si) => {
     const g = document.createElement("optgroup");
@@ -880,6 +937,10 @@ function insertarEjemplo(it) {
   const t = ui.texto;
   const modo = modoEfectivo(t.value);
   let bloque = it.texto;
+  if (modo === "puml") {
+    avisar("El documento es PlantUML: los ejemplos de dibu van en YAML o en un fence ```estructura de Markdown");
+    return;
+  }
   if (modo === "md") bloque = "```estructura\n" + bloque + "\n```";
   else if (estado.trozos.length === 1 && estado.trozos[0].entero) {
     avisar("El documento no es una lista de bloques: el ejemplo se agrega igual al final");
@@ -894,6 +955,40 @@ function insertarEjemplo(it) {
   t.scrollTop = Math.max(0, linea * alturaLinea() - t.clientHeight * 0.2);
   programarRender(true);
 }
+
+const EJEMPLO_PUML = `# PlantUML y dibu en el mismo apunte
+
+Los fences \`\`\`plantuml (o \`\`\`puml) los dibuja PlantUML, dentro del navegador; los \`\`\`estructura, dibu.
+
+\`\`\`plantuml
+@startuml
+actor Usuario
+participant "Programa" as P
+Usuario -> P : ingresa n
+P -> P : calcula n!
+P --> Usuario : resultado
+@enduml
+\`\`\`
+
+Sin \`@startuml\`, el bloque se envuelve solo, y las opciones de alucarD (\`// [ancho, 60%]\`) se ignoran:
+
+\`\`\`puml
+// [centrado] [alt, Jerarquía de figuras]
+abstract class Figura {
+  + area() : double
+}
+class Circulo
+class Rectangulo
+Figura <|-- Circulo
+Figura <|-- Rectangulo
+\`\`\`
+
+\`\`\`estructura
+- type: array
+  title: Los mismos datos, con dibu
+  values: [3, 1, 4, 1, 5]
+\`\`\`
+`;
 
 function textoInicial() {
   // Un ejemplo por área: control, química, digital, sistemas operativos y probabilidad.
@@ -1013,6 +1108,7 @@ function conectarEventos() {
     if (v.startsWith("@")) {
       if (ui.texto.value.trim() && !confirm("Esto reemplaza el documento actual. ¿Continuar?")) return;
       if (v === "@catalogo") cargarTexto(DATOS.catalogo, "kitchen_sink.yaml");
+      else if (v === "@puml") cargarTexto(EJEMPLO_PUML, "plantuml.md");
       else cargarTexto(DATOS.markdown, "kitchen_sink.md");
       return;
     }
@@ -1101,7 +1197,8 @@ async function arrancar() {
     const r = await estado.motor.listo;
     if (!r.ok) throw new Error(r.error);
     estado.tipos = r.resultado;
-    $("#e-motor").textContent = `Motor dibu (WebAssembly) · ${estado.tipos.length} tipos`;
+    $("#e-motor").textContent = `Motor dibu (WebAssembly) · ${estado.tipos.length} tipos` +
+      (PUML.disponible ? ` · PlantUML ${PUML.version}` : "");
     poblarAyuda();
     poblarNuevoBloque();
     if (prefs.vista === "visual") abrirVisual(true);

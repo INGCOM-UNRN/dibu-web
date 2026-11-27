@@ -7,9 +7,12 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const ctx = vm.createContext({ RE_VALLA: /^(`{3,}|~{3,})[ \t]*(?:estructura|statics)[ \t]*$/ });
+// Las expresiones de los fences se toman de app.js, para probar las mismas que usa el editor.
+const fences = readFileSync(join(raiz, "web/app.js"), "utf8").match(/^const RE_(VALLA|PUML) = .*;$/gm);
+if (!fences || fences.length !== 2) throw new Error("no se encontraron RE_VALLA y RE_PUML en web/app.js");
+const ctx = vm.createContext({});
 vm.runInContext(
-  readFileSync(join(raiz, "web/visual.js"), "utf8") + "\n" + readFileSync(join(raiz, "web/asistente.js"), "utf8") +
+  fences.join("\n") + "\n" + readFileSync(join(raiz, "web/visual.js"), "utf8") + "\n" + readFileSync(join(raiz, "web/asistente.js"), "utf8") +
     "\n;globalThis.analizarContexto = analizarContexto; globalThis.cuerpoEjemplo = cuerpoEjemplo;",
   ctx
 );
@@ -69,6 +72,9 @@ caso("dentro de [ ]: nada", "- type: array\n  values: [1, ‸", null);
 caso("JSON: nada", '[{"type": "array", ‸}]', null);
 caso("Markdown dentro del fence", "# Título\n\n```estructura\n- type: lewis\n  mo‸\n```\n", { modo: "clave", tipo: "lewis", prefijo: "mo" }, "md");
 caso("Markdown fuera del fence", "Texto ‸\n```estructura\n- type: lewis\n```", null, "md");
+caso("Markdown dentro de un fence PlantUML: nada", "```plantuml\nA -> B\nty‸\n```\n", null, "md");
+caso("Markdown después de un fence PlantUML", "```puml\nA -> B\n```\n\n```estructura\n- type: lewis\n  mo‸\n```", { modo: "clave", tipo: "lewis", prefijo: "mo" }, "md");
+caso("documento PlantUML: nada", "@startuml\nty‸\n@enduml", null, "puml");
 caso("Markdown segundo fence", "```estructura\n- type: a\n```\n\n```estructura\ntype: queue\nti‸\n```", { modo: "clave", tipo: "queue" }, "md");
 
 // Valores de un campo anidado, desde un `match` sobre `.get("clave")` del renderizador.

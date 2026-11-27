@@ -243,6 +243,30 @@ await tecla("Enter");
 const enter = await ev(`${$("#texto")}.value`);
 comprobar("Enter mantiene la sangría y completa la clave", enter.endsWith("\n  title: "), JSON.stringify(enter.slice(-14)));
 
+// 7b. PlantUML (motor TeaVM, cargado con el primer bloque): fence en Markdown, error en su línea,
+//     documento .puml con varios diagramas, theme oscuro y apilado junto a los de dibu.
+await ev(`${$("#t-codigo")}.click()`);
+await fijarTexto(JSON.stringify("# Apunte\n\n```plantuml\nAlicia -> Roberto : hola\n```\n\n```estructura\n- type: array\n  values: [1, 2]\n```\n"));
+const listas = `!document.querySelector('.tarjeta.viejo, .lienzo.cargando')`; // sin el SVG anterior de relleno
+const puml = await hasta(`${tarjetasOk} === 2 && ${listas} && [...document.querySelectorAll('.tarjeta')].map(t => t.querySelector('.tipo').textContent + '|' + t.querySelector('.ident').textContent).join(' ')`, 60000);
+comprobar("fence plantuml dibujado con TeaVM", /^plantuml\|plantuml-[0-9a-f]{12}\.svg array\|estructura-/.test(puml || ""), puml || "");
+const svgPuml = await ev(`${$(".tarjeta .lienzo img")}._svg || ""`);
+comprobar("el SVG de PlantUML trae el texto del diagrama", svgPuml.startsWith("<svg") && svgPuml.includes("Roberto"), svgPuml.slice(0, 200));
+comprobar("Editar no aplica a PlantUML", await ev(`${$('.tarjeta button[data-acc="editar"]')}.disabled`));
+const apilado = await ev(`estado.motor.llamar("dibu_stack", JSON.stringify(estado.tarjetas.filter(d => d.svg).map(d => d.svg))).then(r => r.ok && !r.resultado.error && r.resultado.svg.includes("Roberto") || JSON.stringify(r).slice(0, 300))`);
+comprobar("Exportar todo apila PlantUML y dibu", apilado === true, String(apilado));
+await fijarTexto(JSON.stringify("```puml\n// [ancho, 60%]\nA -> B\nesto no es plantuml ((\n```\n"));
+const errPuml = await hasta(`${$(".tarjeta.error .msg-error")}?.textContent`, 30000);
+comprobar("error de PlantUML en su línea", /^Línea 4: .*Syntax Error/.test(errPuml || ""), errPuml || "");
+await fijarTexto(JSON.stringify("@startuml\nA -> B\n@enduml\n\n@startmindmap\n* raíz\n** hoja\n@endmindmap\n"));
+const docPuml = await hasta(`${tarjetasOk} === 2 && ${listas} && ${$("#v-resumen")}.textContent`, 30000);
+comprobar("documento PlantUML: un diagrama por @start…", /PlantUML/.test(docPuml || ""), docPuml || "");
+const claro = await ev(`${$(".tarjeta .lienzo img")}._svg`);
+await ev(`${$("#b-oscuro")}.click()`);
+const oscuroPuml = await hasta(`${tarjetasOk} === 2 && ${listas} && ${$(".tarjeta .lienzo img")}._svg !== ${JSON.stringify(claro)}`, 30000);
+comprobar("Oscuro usa el modo oscuro de PlantUML", !!oscuroPuml);
+await ev(`${$("#b-tinta")}.click()`);
+
 // 8. Theme oscuro desde la barra.
 await fijarTexto(JSON.stringify("- type: array\n  values: [1, 2]\n"));
 await ev(`${$("#b-oscuro")}.click()`);

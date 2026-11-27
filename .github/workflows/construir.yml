@@ -59,6 +59,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: PlantUML (@plantuml/core, versión fija en package-lock.json)
+        working-directory: dibu-web
+        run: npm ci
       - name: Sintaxis JavaScript
         working-directory: dibu-web
         run: for f in web/*.js scripts/*.mjs; do node --check "$f"; done

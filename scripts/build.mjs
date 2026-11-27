@@ -4,10 +4,13 @@
 //
 // Uso: node scripts/build.mjs [--sin-cargo]
 //   DIBU_DIR  ruta al repositorio dibu (por defecto ../dibu), de donde se toman los ejemplos.
+//   PLANTUML_DIR  paquete @plantuml/core (por defecto node_modules/@plantuml/core, `npm ci`).
+//                 Sin él, el editor se construye igual pero no dibuja los bloques PlantUML.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import { construirEsquema, desdeFixtures, desdeFuente } from "./esquema.mjs";
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -77,6 +80,30 @@ const fixture = (rel) => {
   return leer(p);
 };
 
+// PlantUML compilado a JavaScript con TeaVM (@plantuml/core). Va comprimido con gzip y el editor
+// lo descomprime y lo carga recién cuando aparece el primer bloque PlantUML, así no demora el
+// arranque. `viz-global.js` es Graphviz (sin él, PlantUML usa su layout Smetana); `themes.js` y
+// `openiconic.js` son los `!theme` y los íconos `<&…>`. Los emoji (1,8 MB) quedan afuera.
+let avisoPlantuml = "";
+function plantuml() {
+  const dir = resolve(process.env.PLANTUML_DIR || join(raiz, "node_modules", "@plantuml", "core"));
+  if (!existsSync(join(dir, "plantuml.js"))) {
+    console.warn(`! no se encontró PlantUML en ${dir} (npm ci): los bloques PlantUML no se van a dibujar`);
+    return null;
+  }
+  const gz = (f) => gzipSync(readFileSync(join(dir, f)), { level: 9 }).toString("base64");
+  const { version } = JSON.parse(leer(join(dir, "package.json")));
+  const p = { version, motor: gz("plantuml.js"), viz: gz("viz-global.js"), extras: ["themes.js", "openiconic.js"].map(gz) };
+  // Los avisos de licencia van comprimidos con los scripts: se repiten legibles en el HTML.
+  const cabeceraViz = /^\/\*![\s\S]*?\*\//.exec(leer(join(dir, "viz-global.js")));
+  avisoPlantuml = `@plantuml/core ${version}: PlantUML y Viz.js, sin modificar.\n\n` +
+    leer(join(dir, "LICENSE")) + "\n" + (cabeceraViz ? cabeceraViz[0].replace(/^\/\*!|\*\/$/g, "").trim() : "") +
+    "\nViz.js: MIT. Graphviz: EPL-1.0 (https://graphviz.org/license/). Expat: MIT.";
+  const total = p.motor.length + p.viz.length + p.extras.reduce((a, x) => a + x.length, 0);
+  console.log(`· PlantUML ${version} (TeaVM): ${(total / 1024).toFixed(0)} KiB comprimido`);
+  return p;
+}
+
 // JSON seguro para incrustar dentro de <script>.
 const js = (v) =>
   JSON.stringify(v).replace(/</g, "\\u003c").replace(/[\u2028\u2029]/g, (c) => "\\u" + c.charCodeAt(0).toString(16));
@@ -85,17 +112,19 @@ const datos = `window.DIBU = {
   worker: ${js(leer(join(web, "worker.js")))},
   catalogo: ${js(fixture("kitchen_sink/kitchen_sink.yaml"))},
   markdown: ${js(fixture("kitchen_sink/kitchen_sink.md"))},
-  esquema: ${js(esquema())}
+  esquema: ${js(esquema())},
+  plantuml: ${js(plantuml())}
 };`;
 
 const sinCierre = (s) => s.replace(/<\/(script|style)/gi, "<\\/$1");
+const comentario = (t) => (t ? `<!--\nComponentes de terceros incluidos en este archivo:\n\n${t.replace(/--/g, "- -")}\n-->\n` : "");
 const html = leer(join(web, "index.html"))
   .replace("/*@ESTILO@*/", () => sinCierre(leer(join(web, "style.css"))))
   .replace("/*@DATOS@*/", () => datos)
-  .replace("/*@APP@*/", () => sinCierre(["markdown.js", "visual.js", "asistente.js", "app.js"].map((f) => leer(join(web, f))).join("\n")));
+  .replace("/*@APP@*/", () => sinCierre(["markdown.js", "plantuml.js", "visual.js", "asistente.js", "app.js"].map((f) => leer(join(web, f))).join("\n")));
 
 mkdirSync(dist, { recursive: true });
 const salida = join(dist, "index.html");
-writeFileSync(salida, html);
+writeFileSync(salida, html.replace("<html", () => comentario(avisoPlantuml) + "<html"));
 const kb = (n) => (n / 1024).toFixed(0) + " KiB";
 console.log(`✓ ${salida} (${kb(statSync(salida).size)}, motor ${kb(wasm.length)})`);

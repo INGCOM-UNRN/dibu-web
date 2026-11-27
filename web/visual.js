@@ -311,6 +311,7 @@ async function sincronizarVisual() {
   }
   const tr = estado.trozos[V.sel.trozo];
   if (!tr) { V.raiz = null; V.fuente = null; V.error = null; pintarInspector(); return; }
+  if (tr.lenguaje === "plantuml") { V.raiz = null; V.fuente = null; V.error = null; pintarInspector(); return; }
   const texto = textoRango(tr);
   if (texto === V.fuente && V.raiz !== null) return;
   const v = ++V.version;
@@ -528,6 +529,11 @@ function pintarInspector() {
   const tr = estado.trozos[V.sel.trozo];
   if (!tr) {
     cont.append(el("div", { class: "vacio" }, "No hay bloques todavía. Usá «+ Nuevo» para agregar un diagrama."));
+    return;
+  }
+  if (tr.lenguaje === "plantuml") {
+    cont.append(el("div", { class: "vacio" }, "Los diagramas PlantUML se editan en la pestaña Código.",
+      el("br"), el("button", { type: "button", onclick: () => abrirVisual(false) }, "Ir al código")));
     return;
   }
   if (V.error) {

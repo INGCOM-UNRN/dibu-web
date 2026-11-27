@@ -47,12 +47,20 @@ function rutaTexto(segs) {
 
 /** Región YAML que contiene la línea: todo el documento, o el cuerpo del fence en Markdown. */
 function regionDe(lineas, linea, modo) {
+  if (modo === "puml") return null;
   if (modo !== "md") return { ini: 0, fin: lineas.length };
   let abierta = null;
   let ini = -1;
   for (let i = 0; i < lineas.length; i++) {
     if (abierta === null) {
       const m = RE_VALLA.exec(lineas[i]);
+      if (m && RE_PUML.test(m[2])) { // un fence PlantUML no es YAML: el asistente no lo toca
+        let j = i + 1;
+        while (j < lineas.length && lineas[j].trimEnd() !== m[1]) j++;
+        if (linea >= i && linea <= j) return null;
+        i = j;
+        continue;
+      }
       if (m) { abierta = m[1]; ini = i + 1; }
       if (i >= linea) return null;
     } else if (lineas[i].trimEnd() === abierta) {
