@@ -355,6 +355,15 @@ if (process.env.PROBAR_RED) {
   const conLetra = await hasta(`(${$(".tarjeta .lienzo img")}._svg || "").includes("font-family=\\"'Roboto Slab'") && ${$(".tarjeta .lienzo img")}._svg`, 30000);
   comprobar("Google Fonts: el SVG usa la familia y la trae incrustada", !!conLetra && /<style>@font-face \{[^}]*Roboto Slab[^}]*url\(data:font\/woff2;base64,/.test(conLetra),
     `${Math.round((conLetra || "").length / 1024)} KiB · ${await ev(`${$("#f-sans-estado")}.textContent`)}`);
+  // Títulos: sólo para los # del documento, no van a los SVG.
+  await fijarTexto(JSON.stringify("# Un título\n\nTexto.\n\n```dibu\ntype: array\nvalues: [1]\n```\n"));
+  await ev(`(() => { const c = ${$("#c-texto")}; c.checked = true; c.dispatchEvent(new Event('change')); })()`);
+  await ev(`(() => { ${$("#f-titulos")}.value = "Playfair Display"; ${$("#f-aplicar")}.click(); })()`);
+  const titulo = await hasta(`/Playfair Display/.test(getComputedStyle(${$("#documento h1")}).fontFamily) && document.fonts.check("700 20px 'Playfair Display'")
+    && !/Playfair/.test(getComputedStyle(${$("#documento p")}).fontFamily) && !(${$("#documento figure img")}?.src || "").includes("Playfair")
+    && getComputedStyle(${$("#documento h1")}).fontFamily`, 30000);
+  comprobar("Google Fonts: tipografía propia para los títulos del documento", !!titulo, `${titulo} · ${await ev(`${$("#f-titulos-estado")}.textContent`)}`);
+  await ev(`(() => { const c = ${$("#c-texto")}; c.checked = false; c.dispatchEvent(new Event('change')); })()`);
   await ev(`(() => { ${$("#f-quitar")}.click(); ${$("#fuentes")}.close(); })()`);
   comprobar("Quitar vuelve a la letra de dibu", !!(await hasta(`${tarjetasOk} === 1 && !(${$(".tarjeta .lienzo img")}._svg || "").includes("Roboto Slab")`, 15000)));
 }
