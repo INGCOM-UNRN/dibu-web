@@ -348,22 +348,45 @@ comprobar("URLs de Google Fonts aceptadas", normal[0] === "https://fonts.googlea
   && normal[2] === "https://fonts.googleapis.com/css2?family=Inter:wght@400" && normal[3] === "ERROR" && normal[4] === "ERROR", normal.join(" | "));
 const incrustado = await ev(`FUENTES.incrustar('<svg a="1"><text font-family="&#39;X&#39;, sans">t</text></svg>', [{ familia: "X", css: "@font-face{}" }, null])`);
 comprobar("las letras van dentro del SVG", incrustado === '<svg a="1"><style>@font-face{}</style><text font-family="&#39;X&#39;, sans">t</text></svg>', incrustado);
+const rangos = await ev(`["U+0000-00FF, U+0131", "U+0370-03FF", "U+0??", "U+4??", "U+25ee8, U+2600c", "U+0400-045F", ""].map(FUENTES.cubreLatinoOGriego)`);
+comprobar("sólo se toman los tramos con letras latinas o griegas", rangos.join() === "true,true,true,false,false,false,true", rangos.join());
 if (process.env.PROBAR_RED) {
+  // Revisar descarga y muestra el peso; recién entonces se puede aplicar.
+  const revisarYAplicar = async (campo, valor) => {
+    await ev(`(() => { const c = ${$(`#${campo}`)}; c.value = ${JSON.stringify(valor)}; c.dispatchEvent(new Event("input")); })()`);
+    const antes = await ev(`${$("#f-aplicar")}.disabled`);
+    await ev(`${$("#f-revisar")}.click()`);
+    const est = await hasta(`!${$("#f-aplicar")}.disabled && ${$(`#${campo}-estado`)}.textContent`, 30000);
+    await ev(`${$("#f-aplicar")}.click()`);
+    return { antes, est };
+  };
   // Con red: PROBAR_RED=1 npm run test:navegador descarga una familia de verdad.
   await fijarTexto(JSON.stringify("- type: array\n  title: Letra\n  values: [1, 2]\n"));
-  await ev(`(() => { ${$("#b-fuentes")}.click(); ${$("#f-sans")}.value = "https://fonts.google.com/specimen/Roboto+Slab"; ${$("#f-aplicar")}.click(); })()`);
+  await ev(`${$("#b-fuentes")}.click()`);
+  const rs = await revisarYAplicar("f-sans", "https://fonts.google.com/specimen/Roboto+Slab");
+  comprobar("Google Fonts: no se aplica sin revisar, y Revisar muestra el peso", rs.antes === true && /^✓ Roboto Slab · \d+ KiB \(\+\d+ KiB en cada SVG\)$/.test(rs.est || ""), `${rs.antes} · ${rs.est}`);
   const conLetra = await hasta(`(${$(".tarjeta .lienzo img")}._svg || "").includes("font-family=\\"'Roboto Slab'") && ${$(".tarjeta .lienzo img")}._svg`, 30000);
   comprobar("Google Fonts: el SVG usa la familia y la trae incrustada", !!conLetra && /<style>@font-face \{[^}]*Roboto Slab[^}]*url\(data:font\/woff2;base64,/.test(conLetra),
     `${Math.round((conLetra || "").length / 1024)} KiB · ${await ev(`${$("#f-sans-estado")}.textContent`)}`);
   // Títulos: sólo para los # del documento, no van a los SVG.
   await fijarTexto(JSON.stringify("# Un título\n\nTexto.\n\n```dibu\ntype: array\nvalues: [1]\n```\n"));
   await ev(`(() => { const c = ${$("#c-texto")}; c.checked = true; c.dispatchEvent(new Event('change')); })()`);
-  await ev(`(() => { ${$("#f-titulos")}.value = "Playfair Display"; ${$("#f-aplicar")}.click(); })()`);
+  await revisarYAplicar("f-titulos", "Playfair Display");
   const titulo = await hasta(`/Playfair Display/.test(getComputedStyle(${$("#documento h1")}).fontFamily) && document.fonts.check("700 20px 'Playfair Display'")
     && !/Playfair/.test(getComputedStyle(${$("#documento p")}).fontFamily) && !(${$("#documento figure img")}?.src || "").includes("Playfair")
     && getComputedStyle(${$("#documento h1")}).fontFamily`, 30000);
   comprobar("Google Fonts: tipografía propia para los títulos del documento", !!titulo, `${titulo} · ${await ev(`${$("#f-titulos-estado")}.textContent`)}`);
   await ev(`(() => { const c = ${$("#c-texto")}; c.checked = false; c.dispatchEvent(new Event('change')); })()`);
+  // Una familia japonesa (cientos de tramos) queda chica: sólo entran sus letras latinas.
+  await ev(`(() => { const c = ${$("#f-mono")}; c.value = "Noto Sans JP"; c.dispatchEvent(new Event("input")); ${$("#f-revisar")}.click(); })()`);
+  const jp = await hasta(`/^✓|pesa más/.test(${$("#f-mono-estado")}.textContent) && ${$("#f-mono-estado")}.textContent`, 30000);
+  const kibJP = Number((/· (\d+) KiB/.exec(jp || "") || [])[1]);
+  comprobar("Google Fonts: de una familia japonesa sólo entran las letras latinas", kibJP > 0 && kibJP < 400, jp || "");
+  // Más que el límite: no se puede aplicar (límite bajado a 10 KiB para la prueba).
+  await ev(`(() => { FUENTES.opciones.limite = 10 * 1024; const c = ${$("#f-mono")}; c.value = "Fira Code"; c.dispatchEvent(new Event("input")); ${$("#f-revisar")}.click(); })()`);
+  const grande = await hasta(`/pesa más de/.test(${$("#f-mono-estado")}.textContent) && ${$("#f-mono-estado")}.textContent`, 30000);
+  comprobar("Google Fonts: una familia más grande que el límite no se aplica", !!grande && await ev(`${$("#f-aplicar")}.disabled && !/Fira/.test(JSON.stringify(prefs.fuentes))`), grande || "");
+  await ev(`FUENTES.opciones.limite = 1024 * 1024`);
   await ev(`(() => { ${$("#f-quitar")}.click(); ${$("#fuentes")}.close(); })()`);
   comprobar("Quitar vuelve a la letra de dibu", !!(await hasta(`${tarjetasOk} === 1 && !(${$(".tarjeta .lienzo img")}._svg || "").includes("Roboto Slab")`, 15000)));
 }
