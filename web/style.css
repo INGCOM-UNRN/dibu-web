@@ -528,3 +528,13 @@ body.impresion #i-panel:not([hidden]) {
   color: var(--error); background: var(--error-suave); border: 1px solid var(--error); border-radius: 6px;
 }
 .v-puml-msj[hidden] { display: none; }
+
+/* ---------- tipografías de Google Fonts ---------- */
+#fuentes .dlg { max-width: 560px; }
+.f-campo { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; font-weight: 600; }
+.f-campo input { font: 12.5px var(--mono); min-width: 0; }
+#fuentes .nota { margin: 4px 0 10px 78px; font-size: 12px; }
+#fuentes .nota.error { color: var(--error); }
+#fuentes p.nota:not([id]) { margin-left: 0; }
+#fuentes .primario { background: var(--acento); color: #fff; border-color: var(--acento); }
+.i-acciones { text-align: right; }

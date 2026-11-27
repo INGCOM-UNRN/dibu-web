@@ -121,7 +121,7 @@ const comentario = (t) => (t ? `<!--\nComponentes de terceros incluidos en este 
 const html = leer(join(web, "index.html"))
   .replace("/*@ESTILO@*/", () => sinCierre(leer(join(web, "style.css"))))
   .replace("/*@DATOS@*/", () => datos)
-  .replace("/*@APP@*/", () => sinCierre(["markdown.js", "plantuml.js", "visual.js", "asistente.js", "app.js"].map((f) => leer(join(web, f))).join("\n")));
+  .replace("/*@APP@*/", () => sinCierre(["markdown.js", "plantuml.js", "fuentes.js", "visual.js", "asistente.js", "app.js"].map((f) => leer(join(web, f))).join("\n")));
 
 mkdirSync(dist, { recursive: true });
 const salida = join(dist, "index.html");

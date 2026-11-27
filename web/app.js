@@ -28,7 +28,7 @@ const ui = {
 };
 
 const prefs = Object.assign(
-  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false, ajuste: false },
+  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false, ajuste: false, fuentes: { sans: "", mono: "" } },
   leerJSON(localStorage.getItem(CLAVE_PREFS)) || {}
 );
 
@@ -40,6 +40,7 @@ const estado = {
   version: 0,
   activo: -1,      // índice del trozo bajo el cursor
   cache: new Map(),
+  fuentes: { sans: null, mono: null }, // tipografías de Google Fonts ya descargadas
   nombreArchivo: "diagramas.yaml",
 };
 
@@ -196,8 +197,21 @@ function ajustarError(msg, desplazamiento) {
 // ======================================================================
 /** Theme de dibu para la paleta elegida en la barra (los bloques pueden pisarlo con `theme:`). */
 const THEMES = { tinta: "ink", color: "color", contraste: "high-contrast", oscuro: "dark" };
+// Las familias por defecto de dibu: quedan de respaldo detrás de las de Google Fonts.
+const SANS_DIBU = "DejaVu Sans, Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif";
+const MONO_DIBU = "DejaVu Sans Mono, Menlo, Consolas, Courier New, monospace";
 function sobre(texto) {
-  return JSON.stringify({ text: texto, theme: THEMES[prefs.paleta] || "ink" });
+  const base = THEMES[prefs.paleta] || "ink";
+  const { sans, mono } = estado.fuentes;
+  if (!sans && !mono) return JSON.stringify({ text: texto, theme: base });
+  const typography = {};
+  if (sans) typography.sans = `'${sans.familia}', ${SANS_DIBU}`;
+  if (mono) typography.mono = `'${mono.familia}', ${MONO_DIBU}`;
+  return JSON.stringify({ text: texto, theme: { extends: base, typography } });
+}
+/** Las tipografías en uso, para la clave de la caché. */
+function claveFuentes() {
+  return [estado.fuentes.sans?.familia || "", estado.fuentes.mono?.familia || ""].join("/");
 }
 
 /** Un bloque PlantUML, con el motor TeaVM: una tarjeta, con el error en su línea si lo hay. */
@@ -270,7 +284,7 @@ async function renderizar() {
   // Primera pasada: lo que ya está en caché se muestra al instante.
   const pendientes = [];
   trozos.forEach((tr, i) => {
-    tr.clave = `${modo}|${prefs.paleta}|${tr.sinCerrar ? "!" : ""}${tr.texto}`;
+    tr.clave = `${modo}|${prefs.paleta}|${claveFuentes()}|${tr.sinCerrar ? "!" : ""}${tr.texto}`;
     tr.res = estado.cache.get(tr.clave) || null;
     if (!tr.res) pendientes.push(i);
   });
@@ -283,6 +297,11 @@ async function renderizar() {
     if (v !== estado.version) return; // el texto cambió: abandonamos esta pasada
     const tr = trozos[i];
     const res = await calcularTrozo(tr, modo);
+    // Las letras de Google Fonts van dentro de cada SVG: el <img> no puede pedirlas a la red.
+    if (tr.lenguaje !== "plantuml" && (estado.fuentes.sans || estado.fuentes.mono)) {
+      const fs = [estado.fuentes.sans, estado.fuentes.mono];
+      for (const it of res.items) if (it.svg) it.svg = FUENTES.incrustar(it.svg, fs);
+    }
     if (res.guardar) {
       estado.cache.set(tr.clave, res);
       if (estado.cache.size > 400) estado.cache.delete(estado.cache.keys().next().value);
@@ -1195,6 +1214,7 @@ function conectarEventos() {
   };
   $("#i-salir").onclick = () => vistaImpresion(false);
   conectarPagina();
+  conectarFuentes();
   document.addEventListener("fullscreenchange", () => {
     if (!document.fullscreenElement && document.body.classList.contains("impresion")) vistaImpresion(false);
   });
@@ -1222,6 +1242,64 @@ function conectarEventos() {
     const t = await leerHash();
     if (t !== null && t !== ui.texto.value) cargarTexto(t);
   });
+}
+
+// ---------- tipografías de Google Fonts ----------
+/** Descarga las tipografías de prefs.fuentes y las aplica al documento y a los diagramas. */
+async function aplicarFuentes() {
+  const estadoCampo = { sans: $("#f-sans-estado"), mono: $("#f-mono-estado") };
+  const nuevas = { sans: null, mono: null };
+  await Promise.all(["sans", "mono"].map(async (rol) => {
+    const entrada = (prefs.fuentes || {})[rol] || "";
+    if (!entrada.trim()) { estadoCampo[rol].textContent = "la de dibu"; estadoCampo[rol].className = "nota"; return; }
+    estadoCampo[rol].textContent = "descargando…";
+    estadoCampo[rol].className = "nota";
+    try {
+      nuevas[rol] = await FUENTES.cargar(entrada);
+      estadoCampo[rol].textContent = `${nuevas[rol].familia} · ${Math.round(nuevas[rol].bytes / 1024)} KiB`;
+    } catch (e) {
+      estadoCampo[rol].textContent = String(e.message || e);
+      estadoCampo[rol].className = "nota error";
+    }
+  }));
+  // Si mientras se descargaba se cambió otra vez, gana la última llamada.
+  if (JSON.stringify(prefs.fuentes) !== JSON.stringify(aplicarFuentes.pedido)) return;
+  estado.fuentes = nuevas;
+  let st = document.getElementById("estilo-fuentes");
+  if (!st) { st = document.createElement("style"); st.id = "estilo-fuentes"; document.head.append(st); }
+  st.textContent = [nuevas.sans?.css, nuevas.mono?.css,
+    nuevas.sans ? `#documento { font-family: '${nuevas.sans.familia}', var(--sans); }` : "",
+    nuevas.mono ? `#documento code, #documento pre { font-family: '${nuevas.mono.familia}', var(--mono); }` : "",
+  ].filter(Boolean).join("\n");
+  programarRender(true);
+}
+
+function pedirFuentes() {
+  aplicarFuentes.pedido = JSON.parse(JSON.stringify(prefs.fuentes || {}));
+  return aplicarFuentes();
+}
+
+function conectarFuentes() {
+  const dlg = $("#fuentes");
+  const campos = { sans: $("#f-sans"), mono: $("#f-mono") };
+  $("#b-fuentes").onclick = () => {
+    for (const rol in campos) campos[rol].value = (prefs.fuentes || {})[rol] || "";
+    dlg.showModal();
+  };
+  $("#f-aplicar").onclick = (e) => {
+    e.preventDefault();
+    prefs.fuentes = { sans: campos.sans.value.trim(), mono: campos.mono.value.trim() };
+    guardarPrefs();
+    pedirFuentes();
+  };
+  $("#f-quitar").onclick = (e) => {
+    e.preventDefault();
+    campos.sans.value = campos.mono.value = "";
+    prefs.fuentes = { sans: "", mono: "" };
+    guardarPrefs();
+    pedirFuentes();
+  };
+  if (prefs.fuentes && (prefs.fuentes.sans || prefs.fuentes.mono)) pedirFuentes();
 }
 
 // ---------- encabezado y pie de página (márgenes de @page) ----------

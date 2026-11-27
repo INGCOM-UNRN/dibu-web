@@ -311,6 +311,25 @@ await ev(`${$("#texto")}.focus()`);
 await tecla("z", "alt");
 comprobar("Alt+Z quita el ajuste", await hasta(`!document.body.classList.contains('ajuste') && ${$("#texto")}.wrap === 'off' && !${$("#c-ajuste")}.checked`));
 
+// 7d. Google Fonts: qué entradas se aceptan y cómo van las letras dentro del SVG (sin red).
+const normal = await ev(`(() => { const r = []; for (const x of ["Roboto Slab", "https://fonts.google.com/specimen/Fira+Code", "fonts.googleapis.com/css2?family=Inter:wght@400", "https://ejemplo.com/a.css", "x<y"]) {
+  try { r.push(FUENTES.normalizar(x)); } catch (e) { r.push("ERROR"); } } return r; })()`);
+comprobar("URLs de Google Fonts aceptadas", normal[0] === "https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;700&display=swap"
+  && normal[1] === "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap"
+  && normal[2] === "https://fonts.googleapis.com/css2?family=Inter:wght@400" && normal[3] === "ERROR" && normal[4] === "ERROR", normal.join(" | "));
+const incrustado = await ev(`FUENTES.incrustar('<svg a="1"><text font-family="&#39;X&#39;, sans">t</text></svg>', [{ familia: "X", css: "@font-face{}" }, null])`);
+comprobar("las letras van dentro del SVG", incrustado === '<svg a="1"><style>@font-face{}</style><text font-family="&#39;X&#39;, sans">t</text></svg>', incrustado);
+if (process.env.PROBAR_RED) {
+  // Con red: PROBAR_RED=1 npm run test:navegador descarga una familia de verdad.
+  await fijarTexto(JSON.stringify("- type: array\n  title: Letra\n  values: [1, 2]\n"));
+  await ev(`(() => { ${$("#b-fuentes")}.click(); ${$("#f-sans")}.value = "https://fonts.google.com/specimen/Roboto+Slab"; ${$("#f-aplicar")}.click(); })()`);
+  const conLetra = await hasta(`(${$(".tarjeta .lienzo img")}._svg || "").includes("font-family=\\"'Roboto Slab'") && ${$(".tarjeta .lienzo img")}._svg`, 30000);
+  comprobar("Google Fonts: el SVG usa la familia y la trae incrustada", !!conLetra && /<style>@font-face \{[^}]*Roboto Slab[^}]*url\(data:font\/woff2;base64,/.test(conLetra),
+    `${Math.round((conLetra || "").length / 1024)} KiB · ${await ev(`${$("#f-sans-estado")}.textContent`)}`);
+  await ev(`(() => { ${$("#f-quitar")}.click(); ${$("#fuentes")}.close(); })()`);
+  comprobar("Quitar vuelve a la letra de dibu", !!(await hasta(`${tarjetasOk} === 1 && !(${$(".tarjeta .lienzo img")}._svg || "").includes("Roboto Slab")`, 15000)));
+}
+
 // 8. Theme oscuro desde la barra.
 await fijarTexto(JSON.stringify("- type: array\n  values: [1, 2]\n"));
 await ev(`${$("#b-oscuro")}.click()`);

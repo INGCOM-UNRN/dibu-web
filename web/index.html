@@ -36,6 +36,7 @@
     <span class="sep"></span>
     <button id="b-compartir" title="Copiar un enlace con el documento embebido">Compartir</button>
     <button id="b-todo" title="Descargar todos los diagramas apilados en un único SVG">Exportar todo</button>
+    <button id="b-fuentes" title="Usar tipografías de Google Fonts en los diagramas y el documento">Letras…</button>
     <button id="b-ayuda" class="icono" title="Ayuda y tipos disponibles" aria-label="Ayuda">?</button>
   </nav>
 </header>
@@ -102,10 +103,23 @@
   <span id="e-cursor">Ln 1, Col 1</span>
 </footer>
 
+<dialog id="fuentes">
+  <form method="dialog" class="dlg">
+    <header><h2>Tipografías de Google Fonts</h2><button class="icono" aria-label="Cerrar">✕</button></header>
+    <p>Pegá la URL de una familia de <a href="https://fonts.google.com" target="_blank" rel="noopener">Google Fonts</a> (la de su página, <code>fonts.google.com/specimen/Roboto+Slab</code>, o la de la hoja, <code>fonts.googleapis.com/css2?family=…</code>) o sólo su nombre. Las letras se descargan una vez y van incrustadas en cada SVG, así que los diagramas exportados se ven igual en cualquier lado. Un campo vacío usa la letra de dibu.</p>
+    <label class="f-campo">Texto <input id="f-sans" placeholder="https://fonts.google.com/specimen/Source+Sans+3" spellcheck="false"></label>
+    <p id="f-sans-estado" class="nota"></p>
+    <label class="f-campo">Código <input id="f-mono" placeholder="https://fonts.google.com/specimen/Fira+Code" spellcheck="false"></label>
+    <p id="f-mono-estado" class="nota"></p>
+    <p class="nota">dibu calcula el tamaño de las cajas con un ancho de letra promedio: una familia muy ancha puede quedar justa. PlantUML usa sus propias letras.</p>
+    <p class="i-acciones"><button id="f-quitar">Quitar</button> <button id="f-aplicar" class="primario">Aplicar</button></p>
+  </form>
+</dialog>
+
 <dialog id="ayuda">
   <form method="dialog" class="dlg">
     <header><h2>dibu · editor de diagramas</h2><button class="icono" aria-label="Cerrar">✕</button></header>
-    <p>Escribí bloques YAML o JSON con un campo <code>type</code> y la vista previa se actualiza mientras escribís. Todo se procesa en tu navegador: el motor <code>dibu</code> está compilado a WebAssembly y no se envía nada a ningún servidor.</p>
+    <p>Escribí bloques YAML o JSON con un campo <code>type</code> y la vista previa se actualiza mientras escribís. Todo se procesa en tu navegador: el motor <code>dibu</code> está compilado a WebAssembly y no se envía nada a ningún servidor. La única excepción son las tipografías de Google Fonts que elijas en «Letras…»: se descargan de Google.</p>
     <ul>
       <li><b>YAML / JSON</b>: una lista de bloques (<code>- type: …</code>), un bloque suelto o <code>{blocks: [...]}</code>. Cada elemento de la lista se renderiza por separado.</li>
       <li><b>Markdown</b>: cada fence <code>```dibu</code> (o <code>```estructura</code>, <code>```statics</code>) genera un SVG apilado, con el mismo nombre <code>estructura-&lt;hash&gt;.svg</code> que produce <code>dibu sync-md</code>. Con <b>texto</b>, la vista previa muestra el documento entero: el resto del Markdown entre los diagramas.</li>
