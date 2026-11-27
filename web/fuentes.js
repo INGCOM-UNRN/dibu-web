@@ -8,6 +8,22 @@ const FUENTES = (() => {
   // Los subconjuntos de Unicode que se incrustan: latín y griego (para α, ω, θ, …).
   const SUBCONJUNTOS = new Set(["latin", "latin-ext", "greek", "greek-ext", "math", "symbols"]);
   const cache = new Map(); // URL normalizada -> Promise<{ familia, css, bytes }>
+  // Tope por familia: las letras van incrustadas en cada SVG (y cada <img> las decodifica), así que
+  // una familia de varios MB multiplica la memoria y puede colgar el navegador.
+  const opciones = { limite: 1024 * 1024 };
+  const mb = (n) => n < 1048576 ? `${Math.round(n / 1024)} KiB` : `${+(n / 1048576).toFixed(1)} MB`;
+
+  /** ¿El rango (`U+0000-00FF, U+0131, U+4??`) incluye la A o la α? Sin rango, cubre todo. */
+  function cubreLatinoOGriego(rango) {
+    if (!rango) return true;
+    return rango.split(",").some((parte) => {
+      const m = /U\+([0-9a-f?]+)(?:-([0-9a-f]+))?/i.exec(parte.trim());
+      if (!m) return false;
+      const ini = parseInt(m[1].replace(/\?/g, "0"), 16);
+      const fin = m[2] ? parseInt(m[2], 16) : parseInt(m[1].replace(/\?/g, "f"), 16);
+      return [0x41, 0x3b1].some((c) => c >= ini && c <= fin);
+    });
+  }
 
   /**
    * La URL de la hoja de estilos de Google Fonts para lo que escribió la persona: una URL de
@@ -44,21 +60,36 @@ const FUENTES = (() => {
 
   // Una letra variable aparece en varias @font-face (400 y 700): se descarga una vez.
   const archivos = new Map();
-  function dataURL(url) {
+  function dataURL(url, maximo) {
     if (!archivos.has(url)) {
-      const p = bajarArchivo(url);
+      const p = bajarArchivo(url, maximo);
       p.catch(() => archivos.delete(url));
       archivos.set(url, p);
     }
     return archivos.get(url);
   }
 
-  async function bajarArchivo(url) {
+  /** Baja un archivo de letra; corta (sin terminar de bajarlo) si pasa de `maximo` bytes. */
+  async function bajarArchivo(url, maximo) {
     const u = new URL(url);
     if (u.protocol !== "https:" || u.hostname !== "fonts.gstatic.com") throw new Error(`letra fuera de Google Fonts: ${u.hostname}`);
     const r = await fetch(u, { credentials: "omit", referrerPolicy: "no-referrer" });
     if (!r.ok) throw new Error(`no se pudo descargar una letra (${r.status})`);
-    const bytes = new Uint8Array(await r.arrayBuffer());
+    const demasiado = () => Object.assign(new Error("grande"), { grande: true });
+    if (Number(r.headers.get("content-length")) > maximo) { r.body?.cancel(); throw demasiado(); }
+    const partes = [];
+    let n = 0;
+    const lector = r.body.getReader();
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (done) break;
+      n += value.length;
+      if (n > maximo) { lector.cancel(); throw demasiado(); }
+      partes.push(value);
+    }
+    const bytes = new Uint8Array(n);
+    let p = 0;
+    for (const x of partes) { bytes.set(x, p); p += x.length; }
     let bin = "";
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     const tipo = /\.woff2(\?|$)/.test(u.pathname) ? "font/woff2" : /\.woff(\?|$)/.test(u.pathname) ? "font/woff" : "font/ttf";
@@ -78,13 +109,15 @@ const FUENTES = (() => {
     // (font-weight: 400 700) para no incrustar el archivo dos veces.
     const reglas = new Map(); // archivo + estilo + rango -> { cuerpo, pesos }
     let familia = null;
-    for (const m of hoja.matchAll(/(?:\/\*\s*([\w-]+)\s*\*\/\s*)?@font-face\s*\{([^}]*)\}/g)) {
-      if (m[1] && !SUBCONJUNTOS.has(m[1])) continue;
+    for (const m of hoja.matchAll(/(?:\/\*\s*([^*]+?)\s*\*\/\s*)?@font-face\s*\{([^}]*)\}/g)) {
       const cuerpo = m[2];
       const f = /font-family:\s*['"]?([^;'"]+)['"]?\s*;/.exec(cuerpo);
       if (!f) continue;
       familia = familia || f[1].trim();
       const campo = (k) => (new RegExp(`${k}:\\s*([^;]+);`).exec(cuerpo) || [, ""])[1].trim();
+      // Con nombre de subconjunto, sólo los de SUBCONJUNTOS. Sin nombre (las familias japonesas o
+      // chinas traen cientos de tramos numerados), sólo los que tienen la A o la α.
+      if (m[1] && !/^\[\d+\]$/.test(m[1]) ? !SUBCONJUNTOS.has(m[1]) : !cubreLatinoOGriego(campo("unicode-range"))) continue;
       const clave = [campo("src"), campo("font-style"), campo("unicode-range")].join("|");
       const peso = Number(campo("font-weight")) || 400;
       const r = reglas.get(clave);
@@ -101,8 +134,15 @@ const FUENTES = (() => {
         cuerpo = cuerpo.replace(/font-weight:\s*[^;]+;/, `font-weight: ${Math.min(...pesos)} ${Math.max(...pesos)};`);
       }
       for (const src of [...cuerpo.matchAll(/url\(([^)]+)\)/g)]) {
-        const d = await dataURL(src[1].replace(/^['"]|['"]$/g, ""));
+        let d;
+        try { d = await dataURL(src[1].replace(/^['"]|['"]$/g, ""), opciones.limite - bytes); } catch (e) {
+          if (!e.grande) throw e;
+          d = { n: opciones.limite + 1 };
+        }
         bytes += d.n;
+        if (bytes > opciones.limite) {
+          throw new Error(`${familia} pesa más de ${mb(opciones.limite)} y no se usa: va incrustada en cada SVG y puede agotar la memoria del navegador. Probá otra familia.`);
+        }
         cuerpo = cuerpo.replace(src[0], `url(${d.url})`);
       }
       salida.push(`@font-face {${cuerpo}}`);
@@ -130,5 +170,5 @@ const FUENTES = (() => {
     return svg.replace(/<svg\b[^>]*>/, (tag) => tag + estilo);
   }
 
-  return { normalizar, cargar, incrustar };
+  return { normalizar, cargar, incrustar, opciones, cubreLatinoOGriego };
 })();
