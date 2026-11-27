@@ -174,10 +174,10 @@ if (campo) {
 // 7. Asistente del editor de código: autocompletado, ejemplo al elegir el tipo y líneas.
 await ev(`${$("#t-codigo")}.click()`);
 const MODS = { alt: 1, ctrl: 2, shift: 8 };
-const CODIGOS = { Enter: 13, ArrowUp: 38, ArrowDown: 40, Escape: 27, Tab: 9, "/": 191 };
+const CODIGOS = { Enter: 13, ArrowUp: 38, ArrowDown: 40, Escape: 27, Tab: 9, "/": 191, z: 90 };
 async function tecla(key, ...mods) {
   const modifiers = mods.reduce((a, m) => a | MODS[m], 0);
-  const code = key === "/" ? "Slash" : key;
+  const code = key === "/" ? "Slash" : /^[a-z]$/.test(key) ? `Key${key.toUpperCase()}` : key;
   const base = { key, code, windowsVirtualKeyCode: CODIGOS[key], modifiers };
   await cmd("Input.dispatchKeyEvent", { type: "rawKeyDown", ...base });
   await cmd("Input.dispatchKeyEvent", { type: "keyUp", ...base });
@@ -276,6 +276,22 @@ await ev(`${$("#b-oscuro")}.click()`);
 const oscuroPuml = await hasta(`${tarjetasOk} === 2 && ${listas} && ${$(".tarjeta .lienzo img")}._svg !== ${JSON.stringify(claro)}`, 30000);
 comprobar("Oscuro usa el modo oscuro de PlantUML", !!oscuroPuml);
 await ev(`${$("#b-tinta")}.click()`);
+
+// 7c. Ajuste de línea en el editor de código: la línea larga ocupa varios renglones y su número
+//     toma esa altura, así el número de la línea siguiente sigue alineado con su texto.
+await fijarTexto(JSON.stringify("- type: array\n  title: " + "palabra ".repeat(60) + "\n  values: [1, 2]\n"));
+await ev(`(() => { const c = ${$("#c-ajuste")}; c.checked = true; c.dispatchEvent(new Event('change')); })()`);
+const ajuste = await hasta(`(() => { const ls = ${$("#resaltado")}.children, ns = ${$("#numeros")}.children;
+  return document.body.classList.contains('ajuste') && ${$("#texto")}.wrap === 'soft' && ls[1].offsetHeight > 2 * ls[0].offsetHeight
+    && ns[1].offsetHeight === ls[1].offsetHeight && ns[2].offsetTop - ns[0].offsetTop === ls[2].offsetTop - ls[0].offsetTop
+    && ${$("#texto")}.scrollWidth <= ${$("#texto")}.clientWidth && [ls[1].offsetHeight, ns[2].offsetTop].join(' px · '); })()`);
+comprobar("ajuste de línea con los números alineados", !!ajuste, ajuste || "");
+// La capa resaltada y el textarea parten igual: el alto del texto coincide.
+const altos = await ev(`[${$("#resaltado")}.scrollHeight, ${$("#texto")}.scrollHeight]`);
+comprobar("las dos capas parten las líneas igual", altos[0] === altos[1], altos.join(" vs "));
+await ev(`${$("#texto")}.focus()`);
+await tecla("z", "alt");
+comprobar("Alt+Z quita el ajuste", await hasta(`!document.body.classList.contains('ajuste') && ${$("#texto")}.wrap === 'off' && !${$("#c-ajuste")}.checked`));
 
 // 8. Theme oscuro desde la barra.
 await fijarTexto(JSON.stringify("- type: array\n  values: [1, 2]\n"));

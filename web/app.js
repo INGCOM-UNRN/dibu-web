@@ -28,7 +28,7 @@ const ui = {
 };
 
 const prefs = Object.assign(
-  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false },
+  { paleta: "tinta", modo: "auto", zoom: 0, seguir: true, izq: 46, texto: false, ajuste: false },
   leerJSON(localStorage.getItem(CLAVE_PREFS)) || {}
 );
 
@@ -646,7 +646,55 @@ function resaltarTodo() {
   }
   ui.resaltado.innerHTML = html;
   ui.numeros.innerHTML = nums;
+  alturasNumeros();
   sincronizarScrollCapas();
+}
+
+// ---------- ajuste de línea ----------
+/** Con el ajuste, cada número toma la altura de su línea (que puede ocupar varios renglones). */
+function alturasNumeros() {
+  const nums = ui.numeros.children;
+  if (!prefs.ajuste) {
+    if (nums[0] && nums[0].style.height) for (const n of nums) n.style.height = "";
+    return;
+  }
+  const alturas = [...ui.resaltado.children].map((l) => l.offsetHeight);
+  alturas.forEach((h, i) => { if (nums[i]) nums[i].style.height = h + "px"; });
+}
+
+function aplicarAjuste() {
+  document.body.classList.toggle("ajuste", prefs.ajuste);
+  ui.texto.wrap = prefs.ajuste ? "soft" : "off";
+  $("#c-ajuste").checked = prefs.ajuste;
+  AC.anchoCar = 0;
+  resaltarTodo();
+}
+
+function alternarAjuste(on = !prefs.ajuste) {
+  prefs.ajuste = on;
+  guardarPrefs();
+  aplicarAjuste();
+}
+
+/** La altura (en px, desde la primera línea) donde empieza la línea `i` del documento. */
+function yLinea(i) {
+  const ls = ui.resaltado.children;
+  if (!prefs.ajuste || !ls.length) return i * alturaLinea();
+  const k = Math.max(0, Math.min(i, ls.length - 1));
+  return ls[k].offsetTop - ls[0].offsetTop + (i > k ? (i - k) * alturaLinea() : 0);
+}
+
+/** La línea del documento que está a la altura `y` (la inversa de yLinea). */
+function lineaEnY(y) {
+  const ls = ui.resaltado.children;
+  if (!prefs.ajuste || !ls.length) return Math.floor(y / alturaLinea());
+  const base = ls[0].offsetTop;
+  let a = 0, b = ls.length - 1;
+  while (a < b) {
+    const m = (a + b + 1) >> 1;
+    if (ls[m].offsetTop - base <= y) a = m; else b = m - 1;
+  }
+  return a;
 }
 
 function marcarErroresEnEditor() {
@@ -717,7 +765,7 @@ function irAlBloque(ti, linea) {
   ui.texto.focus({ preventScroll: true });
   ui.texto.setSelectionRange(pos, pos);
   const lh = alturaLinea();
-  const arriba = tr.ini * lh;
+  const arriba = yLinea(tr.ini);
   const vista = ui.texto.clientHeight;
   if (arriba < ui.texto.scrollTop || arriba > ui.texto.scrollTop + vista - 3 * lh) {
     ignorarScroll = true;
@@ -734,8 +782,7 @@ function alDesplazarEditor() {
   if (!prefs.seguir || document.activeElement !== ui.texto && !estado.trozos.length) return;
   cancelAnimationFrame(rafScroll);
   rafScroll = requestAnimationFrame(() => {
-    const lh = alturaLinea();
-    const linea = Math.floor((ui.texto.scrollTop + lh * 2) / lh);
+    const linea = lineaEnY(ui.texto.scrollTop + alturaLinea() * 2);
     const i = trozoEnLinea(linea, true);
     const el = [...ui.tarjetas.children].find((c) => Number(c.dataset.trozo) === i);
     if (el) ui.tarjetas.scrollTo({ top: el.offsetTop - ui.tarjetas.offsetTop - 14, behavior: "smooth" });
@@ -788,6 +835,7 @@ function alTeclear(ev) {
 
 function atajosGlobales(ev) {
   if (ev.key === "Escape" && document.body.classList.contains("impresion")) { ev.preventDefault(); vistaImpresion(false); return; }
+  if (ev.altKey && !ev.ctrlKey && !ev.metaKey && ev.code === "KeyZ") { ev.preventDefault(); alternarAjuste(); return; }
   const mod = ev.ctrlKey || ev.metaKey;
   if (!mod) return;
   const k = ev.key.toLowerCase();
@@ -952,7 +1000,7 @@ function insertarEjemplo(it) {
   reemplazarSeleccion(pos, pos, prefijo + bloque + "\n", pos + prefijo.length);
   const linea = v.slice(0, pos + prefijo.length).split("\n").length - 1;
   ignorarScroll = true;
-  t.scrollTop = Math.max(0, linea * alturaLinea() - t.clientHeight * 0.2);
+  t.scrollTop = Math.max(0, yLinea(linea) - t.clientHeight * 0.2);
   programarRender(true);
 }
 
@@ -1076,6 +1124,15 @@ function conectarEventos() {
   t.addEventListener("input", () => alEditar());
   t.addEventListener("keydown", alTeclear);
   t.addEventListener("scroll", alDesplazarEditor);
+  $("#c-ajuste").onchange = (e) => alternarAjuste(e.target.checked);
+  // Con el ajuste, un cambio de ancho cambia cuántos renglones ocupa cada línea.
+  let anchoPrevio = 0;
+  new ResizeObserver(() => {
+    if (!prefs.ajuste || t.clientWidth === anchoPrevio) return;
+    anchoPrevio = t.clientWidth;
+    alturasNumeros();
+    sincronizarScrollCapas();
+  }).observe(t);
   ["keyup", "click", "select", "focus"].forEach((ev) => t.addEventListener(ev, actualizarCursor));
   document.addEventListener("selectionchange", () => { if (document.activeElement === t) actualizarCursor(); });
   document.addEventListener("keydown", atajosGlobales);
@@ -1186,6 +1243,7 @@ async function arrancar() {
   poblarEjemplos();
   aplicarPaleta();
   aplicarZoom();
+  aplicarAjuste();
 
   const compartido = await leerHash();
   const guardado = localStorage.getItem(CLAVE_TEXTO);

@@ -281,6 +281,12 @@ body.arrastrando-num, body.arrastrando-num * { cursor: ew-resize !important; }
   caret-color: var(--texto);
   outline: none;
 }
+/* Ajuste de línea: las dos capas parten igual (mismo ancho, con lugar fijo para la barra). */
+body.ajuste #resaltado, body.ajuste #texto { white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-gutter: stable; }
+body.ajuste #texto { overflow-x: hidden; }
+body.ajuste #resaltado .l { height: auto; min-height: var(--lh); min-width: 0; padding-right: 0; }
+body.ajuste #numeros div { overflow: hidden; }
+.pestanas .ajuste { align-self: center; font-size: 12px; color: var(--tenue); margin-bottom: 4px; }
 #texto::selection { background: rgba(36, 87, 197, .28); color: transparent; }
 .k { color: var(--tk-clave); }
 .s { color: var(--tk-cadena); }

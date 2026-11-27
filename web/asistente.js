@@ -291,9 +291,14 @@ function posicionCursor(linea, col) {
   const cs = getComputedStyle(ui.texto);
   const lh = alturaLinea();
   const cw = AC.anchoCar || (AC.anchoCar = medirCaracter());
+  // Con el ajuste de línea, la columna cae en el renglón col / (caracteres por renglón).
+  const porRenglon = prefs.ajuste
+    ? Math.max(1, Math.floor((ui.texto.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) / cw))
+    : Infinity;
+  const renglon = Math.floor(col / porRenglon);
   return {
-    x: parseFloat(cs.paddingLeft) + col * cw - ui.texto.scrollLeft,
-    y: parseFloat(cs.paddingTop) + linea * lh - ui.texto.scrollTop,
+    x: parseFloat(cs.paddingLeft) + (col - renglon * (porRenglon === Infinity ? 0 : porRenglon)) * cw - ui.texto.scrollLeft,
+    y: parseFloat(cs.paddingTop) + yLinea(linea) + renglon * lh - ui.texto.scrollTop,
     lh,
   };
 }
