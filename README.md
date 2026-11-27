@@ -43,7 +43,9 @@ o subido a cualquier hosting estático (GitHub Pages, un bucket, Moodle, etc.).
   del bloque, y crear, duplicar, mover o eliminar bloques con deshacer/rehacer. Cada cambio
   reescribe sólo las líneas de ese bloque en el código (en YAML, o en JSON si el documento era
   JSON) y la vista previa se actualiza al instante. Al hacer clic en una tarjeta, se selecciona
-  su bloque en el formulario.
+  su bloque en el formulario. Un bloque PlantUML se edita en una caja de texto: se dibuja al
+  dejar de escribir y, si tiene un error de sintaxis, la línea queda marcada y el mensaje lleva
+  a ella.
 - **Asistente del editor de código**:
   - Autocompletado según el contexto: al escribir una clave sugiere los campos del tipo y del
     objeto donde está el cursor (por ejemplo `system.` en un Bode o `forward[]` en un
