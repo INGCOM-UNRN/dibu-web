@@ -113,8 +113,9 @@
     <p id="f-mono-estado" class="nota"></p>
     <label class="f-campo">Títulos <input id="f-titulos" placeholder="https://fonts.google.com/specimen/Playfair+Display" spellcheck="false"></label>
     <p id="f-titulos-estado" class="nota"></p>
+    <p class="aviso-fuentes"><b>Cuidado con el tamaño.</b> Algunas familias pesan varios megabytes, y como las letras van dentro de cada diagrama, el navegador las carga una vez por diagrama: el consumo de memoria crece muchísimo y la página puede colgarse. Por eso «Revisar» descarga primero y muestra cuánto pesa cada una, y recién después se puede aplicar. Se toman sólo las letras latinas y griegas, y una familia de más de 1 MB no se usa.</p>
     <p class="nota">dibu calcula el tamaño de las cajas con un ancho de letra promedio: una familia muy ancha puede quedar justa. PlantUML usa sus propias letras.</p>
-    <p class="i-acciones"><button id="f-quitar">Quitar</button> <button id="f-aplicar" class="primario">Aplicar</button></p>
+    <p class="i-acciones"><button id="f-quitar">Quitar</button> <button id="f-revisar">Revisar</button> <button id="f-aplicar" class="primario" disabled>Aplicar</button></p>
   </form>
 </dialog>
 

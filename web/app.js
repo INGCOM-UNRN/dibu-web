@@ -1257,7 +1257,7 @@ async function aplicarFuentes() {
     estadoCampo[rol].className = "nota";
     try {
       nuevas[rol] = await FUENTES.cargar(entrada);
-      estadoCampo[rol].textContent = `${nuevas[rol].familia} · ${Math.round(nuevas[rol].bytes / 1024)} KiB`;
+      estadoCampo[rol].textContent = describirFuente(nuevas[rol], rol);
     } catch (e) {
       estadoCampo[rol].textContent = String(e.message || e);
       estadoCampo[rol].className = "nota error";
@@ -1278,6 +1278,13 @@ async function aplicarFuentes() {
   programarRender(true);
 }
 
+/** «Roboto Slab · 71 KiB (+95 KiB en cada SVG)». */
+function describirFuente(f, rol) {
+  const kib = (n) => `${Math.round(n / 1024)} KiB`;
+  // En el SVG van en base64: un tercio más.
+  return `${f.familia} · ${kib(f.bytes)}` + (rol === "titulos" ? " (sólo en el documento)" : ` (+${kib(f.bytes * 4 / 3)} en cada SVG)`);
+}
+
 function pedirFuentes() {
   aplicarFuentes.pedido = JSON.parse(JSON.stringify(prefs.fuentes || {}));
   return aplicarFuentes();
@@ -1286,13 +1293,52 @@ function pedirFuentes() {
 function conectarFuentes() {
   const dlg = $("#fuentes");
   const campos = { sans: $("#f-sans"), mono: $("#f-mono"), titulos: $("#f-titulos") };
+  const aplicar = $("#f-aplicar");
+  const valores = () => Object.fromEntries(Object.entries(campos).map(([rol, c]) => [rol, c.value.trim()]));
+  let revisado = null; // los valores que se revisaron y entraron en el límite
+  const habilitar = () => { aplicar.disabled = !revisado || JSON.stringify(revisado) !== JSON.stringify(valores()); };
   $("#b-fuentes").onclick = () => {
     for (const rol in campos) campos[rol].value = (prefs.fuentes || {})[rol] || "";
+    revisado = valores(); // lo ya aplicado está revisado
+    habilitar();
     dlg.showModal();
   };
-  $("#f-aplicar").onclick = (e) => {
+  // Cambiar un campo obliga a revisarlo de nuevo antes de aplicar.
+  for (const [rol, c] of Object.entries(campos)) {
+    c.addEventListener("input", () => {
+      habilitar();
+      const e = $(`#f-${rol}-estado`);
+      e.textContent = c.value.trim() ? "sin revisar: «Revisar» la descarga y muestra cuánto pesa" : "la de dibu";
+      e.className = "nota";
+    });
+  }
+  // Revisar: descarga (con el tope de tamaño) y muestra el peso, sin aplicar nada todavía.
+  $("#f-revisar").onclick = async (e) => {
     e.preventDefault();
-    prefs.fuentes = Object.fromEntries(Object.entries(campos).map(([rol, c]) => [rol, c.value.trim()]));
+    const v = valores();
+    revisado = null;
+    habilitar();
+    let ok = true;
+    await Promise.all(Object.entries(v).map(async ([rol, entrada]) => {
+      const est = $(`#f-${rol}-estado`);
+      est.className = "nota";
+      if (!entrada) { est.textContent = "la de dibu"; return; }
+      est.textContent = "descargando…";
+      try {
+        est.textContent = "✓ " + describirFuente(await FUENTES.cargar(entrada), rol);
+      } catch (err) {
+        ok = false;
+        est.textContent = String(err.message || err);
+        est.className = "nota error";
+      }
+    }));
+    if (ok && JSON.stringify(v) === JSON.stringify(valores())) revisado = v;
+    habilitar();
+  };
+  aplicar.onclick = (e) => {
+    e.preventDefault();
+    if (aplicar.disabled) return;
+    prefs.fuentes = valores();
     guardarPrefs();
     pedirFuentes();
   };
@@ -1300,6 +1346,8 @@ function conectarFuentes() {
     e.preventDefault();
     for (const c of Object.values(campos)) c.value = "";
     prefs.fuentes = { sans: "", mono: "", titulos: "" };
+    revisado = valores();
+    habilitar();
     guardarPrefs();
     pedirFuentes();
   };
